@@ -238,7 +238,7 @@ public class ArmorTierlistGenerator {
     /**
      * Assign column numbers for progression mode.
      * Items with no dependencies go left (sequential).
-     * Items with dependencies are sorted by the minimum tier in their chain.
+     * Items with dependencies form vertical chains with their exclusive dependencies.
      */
     private Map<ResourceLocation, Integer> assignProgressionColumns(
             List<ResourceLocation> items,
@@ -246,111 +246,93 @@ public class ArmorTierlistGenerator {
             Map<ResourceLocation, Integer> tierMap) {
 
         Map<ResourceLocation, Integer> columnAssignments = new HashMap<>();
+        Set<ResourceLocation> itemSet = new HashSet<>(items);
 
-        // Find items that have dependencies (appear as outputs in recipe graph)
+        // Build reverse graph: ingredient -> outputs that use it
+        Map<ResourceLocation, Set<ResourceLocation>> reverseGraph = new HashMap<>();
+        for (Map.Entry<ResourceLocation, Set<ResourceLocation>> entry : recipeGraph.entrySet()) {
+            ResourceLocation output = entry.getKey();
+            for (ResourceLocation ingredient : entry.getValue()) {
+                if (itemSet.contains(ingredient)) {
+                    reverseGraph.computeIfAbsent(ingredient, k -> new HashSet<>()).add(output);
+                }
+            }
+        }
+
+        // Find items that have dependencies
         Set<ResourceLocation> itemsWithDependencies = new HashSet<>();
         for (ResourceLocation item : items) {
             if (recipeGraph.containsKey(item)) {
                 Set<ResourceLocation> ingredients = recipeGraph.get(item);
-                // Check if any ingredients are in our item list
-                for (ResourceLocation ingredient : ingredients) {
-                    if (items.contains(ingredient)) {
-                        itemsWithDependencies.add(item);
-                        break;
-                    }
+                if (ingredients.stream().anyMatch(itemSet::contains)) {
+                    itemsWithDependencies.add(item);
                 }
             }
         }
 
-        // Group items into chains using Union-Find
-        CraftingChainDetector.UnionFind uf = new CraftingChainDetector.UnionFind(items);
-        for (ResourceLocation output : recipeGraph.keySet()) {
-            Set<ResourceLocation> ingredients = recipeGraph.get(output);
+        // Track which dependencies have been "claimed" by an output for column sharing
+        Set<ResourceLocation> claimedDependencies = new HashSet<>();
+
+        // Start assigning columns after no-dependency items
+        int nextColumn = items.size();
+
+        // Sort items with dependencies by tier for consistent ordering
+        List<ResourceLocation> withDeps = new ArrayList<>(itemsWithDependencies);
+        withDeps.sort(Comparator.comparing(item -> tierMap.getOrDefault(item, Integer.MAX_VALUE)));
+
+        for (ResourceLocation item : withDeps) {
+            Set<ResourceLocation> ingredients = recipeGraph.getOrDefault(item, Collections.emptySet());
+
+            // Try to find an unclaimed dependency to share a column with
+            ResourceLocation chosenDependency = null;
             for (ResourceLocation ingredient : ingredients) {
-                if (items.contains(ingredient) && items.contains(output)) {
-                    uf.union(output, ingredient);
-                }
-            }
-        }
+                if (!itemSet.contains(ingredient)) continue;
+                if (claimedDependencies.contains(ingredient)) continue;
 
-        // Get groups and calculate minimum tier for each
-        List<Set<ResourceLocation>> groups = uf.getGroups();
-        List<ChainGroup> chainGroups = new ArrayList<>();
-
-        for (Set<ResourceLocation> group : groups) {
-            // Check if this group has any dependencies
-            boolean hasDependencies = false;
-            for (ResourceLocation item : group) {
-                if (itemsWithDependencies.contains(item)) {
-                    hasDependencies = true;
+                // Prefer exclusive dependencies (used only by this item)
+                Set<ResourceLocation> usedBy = reverseGraph.getOrDefault(ingredient, Collections.emptySet());
+                if (usedBy.size() == 1) {
+                    chosenDependency = ingredient;
+                    claimedDependencies.add(ingredient);
                     break;
                 }
             }
 
-            // Find minimum tier in this group
-            int minTier = Integer.MAX_VALUE;
-            for (ResourceLocation item : group) {
-                Integer tier = tierMap.get(item);
-                if (tier != null && tier < minTier) {
-                    minTier = tier;
+            // If no exclusive dependency, try to find any unclaimed dependency
+            if (chosenDependency == null) {
+                for (ResourceLocation ingredient : ingredients) {
+                    if (!itemSet.contains(ingredient)) continue;
+                    if (claimedDependencies.contains(ingredient)) continue;
+
+                    chosenDependency = ingredient;
+                    claimedDependencies.add(ingredient);
+                    break;
                 }
             }
 
-            chainGroups.add(new ChainGroup(group, minTier, hasDependencies));
-        }
-
-        // Separate groups into no-deps and with-deps
-        List<ChainGroup> noDepsGroups = new ArrayList<>();
-        List<ChainGroup> withDepsGroups = new ArrayList<>();
-
-        for (ChainGroup group : chainGroups) {
-            if (group.hasDependencies) {
-                withDepsGroups.add(group);
+            if (chosenDependency != null) {
+                // Share column with the chosen dependency
+                if (columnAssignments.containsKey(chosenDependency)) {
+                    // Dependency already has a column, use it
+                    columnAssignments.put(item, columnAssignments.get(chosenDependency));
+                } else {
+                    // Assign both to a new column (vertical chain)
+                    int column = nextColumn++;
+                    columnAssignments.put(chosenDependency, column);
+                    columnAssignments.put(item, column);
+                }
             } else {
-                noDepsGroups.add(group);
+                // All dependencies are claimed, assign new column
+                columnAssignments.put(item, nextColumn++);
             }
         }
 
-        // Sort chains with dependencies by minimum tier
-        withDepsGroups.sort(Comparator.comparingInt(g -> g.minTier));
-
-        // Don't assign columns to no-dependency items - they'll use sequential placement
-        // Count how many no-dep items we have for column offset calculation
-        int noDepsCount = 0;
-        for (ChainGroup group : noDepsGroups) {
-            noDepsCount += group.items.size();
-        }
-
-        // Assign chains with dependencies to columns after the sequential no-deps area
-        // We'll use a large offset to ensure chains are placed to the right
-        int currentColumn = noDepsCount; // Use at least column 20 to leave space
-        for (ChainGroup group : withDepsGroups) {
-            for (ResourceLocation item : group.items) {
-                columnAssignments.put(item, currentColumn);
-            }
-            currentColumn++;
-        }
-
-        LOGGER.info("Created {} chain groups (no-deps: {}, with-deps: {})",
-            chainGroups.size(),
-            chainGroups.stream().filter(g -> !g.hasDependencies).count(),
-            chainGroups.stream().filter(g -> g.hasDependencies).count());
+        LOGGER.info("Assigned {} items to progression columns (no-deps: {}, with-deps: {})",
+            columnAssignments.size(),
+            items.size() - itemsWithDependencies.size(),
+            itemsWithDependencies.size());
 
         return columnAssignments;
     }
 
-    /**
-     * Helper class for grouping items into chains.
-     */
-    private static class ChainGroup {
-        final Set<ResourceLocation> items;
-        final int minTier;
-        final boolean hasDependencies;
-
-        ChainGroup(Set<ResourceLocation> items, int minTier, boolean hasDependencies) {
-            this.items = items;
-            this.minTier = minTier;
-            this.hasDependencies = hasDependencies;
-        }
-    }
 }
