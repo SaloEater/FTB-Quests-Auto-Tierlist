@@ -82,12 +82,36 @@ repositories {
     maven {
         url "https://cursemaven.com"
     }
+    maven {
+        url "https://maven.ftb.dev/releases"
+        content {
+            includeGroup "dev.ftb.mods"
+        }
+    }
+    maven {
+        url "https://maven.architectury.dev/"
+    }
+    maven {
+        name "ModMaven (JEI)"
+        url "https://modmaven.dev/"
+        content {
+            includeGroup "mezz.jei"
+        }
+    }
 }
 
 dependencies {
     minecraft "net.minecraftforge:forge:${minecraft_version}-${forge_version}"
 
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
+
+    // FTBQuests API for Auto-Tierlist
+    //implementation fg.deobf("curse.maven:ftbq-289412:7260736")
+    implementation "dev.ftb.mods:ftb-quests-forge:2001.4.17"
+    implementation "dev.ftb.mods:ftb-library-forge:2001.2.12"
+//    implementation fg.deobf("curse.maven:ftbl-404465:7296748")
+//    runtimeOnly fg.deobf("curse.maven:ftbt-404468:6130786")
+//    runtimeOnly fg.deobf("curse.maven:arch-419699:5137938")
 }
 
 
