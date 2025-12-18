@@ -177,6 +177,12 @@ public class ProgressionHelper {
      * Assign columns to items within a single chain.
      * Columns are assigned in tier order (lower tier = lower column number).
      * Within the same tier, items are sorted by score (lower score = earlier column, weaker items first).
+     *
+     * Column alignment strategy:
+     * - Each item aligns with its right-most dependency (dependency with highest column number)
+     * - This creates visual hierarchy where items flow down from their "primary" dependency
+     * - Multiple items can share the same column (vertical alignment across tiers)
+     * - Items in the same tier cannot share columns (prevents overlaps)
      */
     private static void assignChainColumns(Set<ResourceLocation> chain,
                                     Map<ResourceLocation, Integer> columnAssignments,
@@ -195,58 +201,62 @@ public class ProgressionHelper {
             .thenComparing((ResourceLocation item) -> scoreMap.getOrDefault(item, 0.0)) // Weaker items first
             .thenComparing(ResourceLocation::toString));
 
-        // First pass: determine which items share columns
-        Map<ResourceLocation, ResourceLocation> sharesColumnWith = new HashMap<>();
-        for (ResourceLocation item : chainItems) {
-            Set<ResourceLocation> usedBy = reverseGraph.getOrDefault(item, Collections.emptySet());
-
-            // Check if this item is used by exactly one item in the chain
-            List<ResourceLocation> dependentsInChain = usedBy.stream()
-                .filter(chain::contains)
-                .collect(Collectors.toList());
-
-            if (!dependentsInChain.isEmpty()) {
-                var leastTierDistance = Integer.MAX_VALUE;
-                ResourceLocation leastTearDistanceDependent = null;
-                for (ResourceLocation dependent : dependentsInChain) {
-                    var tierDistance = tierMap.get(dependent) - tierMap.get(item);
-                    // Only share if dependent hasn't already claimed another item
-                    if (!sharesColumnWith.containsKey(dependent) && tierDistance < leastTierDistance && tierDistance > 0) {
-                        leastTierDistance = tierDistance;
-                        leastTearDistanceDependent = dependent;
-                    }
-                }
-                if (leastTearDistanceDependent != null) {
-                    sharesColumnWith.put(leastTearDistanceDependent, item);
-                }
-            }
-        }
-
-        // Second pass: assign columns in tier order
+        // First pass: assign columns in tier order, trying to align with right-most dependency
         int nextColumn = startColumn;
+
         for (ResourceLocation item : chainItems) {
             if (assigned.contains(item)) continue;
 
-            // Check if this item shares a column with one of its dependencies
-            if (sharesColumnWith.containsKey(item)) {
-                ResourceLocation sharedDep = sharesColumnWith.get(item);
-                if (assigned.contains(sharedDep)) {
-                    // Dependency already has a column, share it
-                    columnAssignments.put(item, columnAssignments.get(sharedDep));
-                    assigned.add(item);
-                } else {
-                    // Assign new column to both
-                    int column = nextColumn++;
-                    columnAssignments.put(sharedDep, column);
-                    columnAssignments.put(item, column);
-                    assigned.add(sharedDep);
-                    assigned.add(item);
+            // Get this item's dependencies (ingredients) that are in the chain
+            Set<ResourceLocation> deps = recipeGraph.getOrDefault(item, Collections.emptySet());
+            List<ResourceLocation> depsInChain = deps.stream()
+                .filter(chain::contains)
+                .filter(assigned::contains) // Only consider already-assigned dependencies
+                .collect(Collectors.toList());
+
+            Integer assignedColumn = null;
+
+            if (!depsInChain.isEmpty()) {
+                int itemTier = tierMap.getOrDefault(item, 0);
+
+                // Find the right-most dependency (highest column number)
+                ResourceLocation rightMostDep = null;
+                int maxColumn = -1;
+
+                for (ResourceLocation dep : depsInChain) {
+                    int depColumn = columnAssignments.get(dep);
+
+                    // Check if this column is already used by another item in the same tier
+                    boolean columnUsedInTier = false;
+                    for (Map.Entry<ResourceLocation, Integer> entry : columnAssignments.entrySet()) {
+                        if (entry.getValue() == depColumn &&
+                            tierMap.getOrDefault(entry.getKey(), 0) == itemTier &&
+                            assigned.contains(entry.getKey())) {
+                            columnUsedInTier = true;
+                            break;
+                        }
+                    }
+
+                    // If column is available and it's further right, use it
+                    var tierDistance = tierMap.get(dep) - tierMap.get(item);
+                    if (!columnUsedInTier && depColumn > maxColumn && tierDistance < 0) {
+                        maxColumn = depColumn;
+                        rightMostDep = dep;
+                    }
                 }
-            } else {
-                // Assign own column
-                columnAssignments.put(item, nextColumn++);
-                assigned.add(item);
+
+                if (rightMostDep != null) {
+                    assignedColumn = columnAssignments.get(rightMostDep);
+                }
             }
+
+            if (assignedColumn == null) {
+                // No suitable dependency column found, or no dependencies - assign new column
+                assignedColumn = nextColumn++;
+            }
+
+            columnAssignments.put(item, assignedColumn);
+            assigned.add(item);
         }
     }
 }

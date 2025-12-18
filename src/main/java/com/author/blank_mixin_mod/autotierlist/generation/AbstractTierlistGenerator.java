@@ -207,9 +207,14 @@ public abstract class AbstractTierlistGenerator<T> {
 
     /**
      * Create quest dependencies based on crafting relationships.
+     * Uses topological ordering to avoid circular dependencies.
      */
     private void createQuestDependencies(Map<ResourceLocation, Set<ResourceLocation>> recipeGraph) {
         int dependenciesCreated = 0;
+        int skippedCycles = 0;
+
+        // Build a set to track created dependencies for cycle detection
+        Map<Quest, Set<Quest>> questDependencies = new HashMap<>();
 
         for (Map.Entry<ResourceLocation, Set<ResourceLocation>> entry : recipeGraph.entrySet()) {
             ResourceLocation outputItem = entry.getKey();
@@ -223,8 +228,19 @@ public abstract class AbstractTierlistGenerator<T> {
             for (ResourceLocation ingredientItem : ingredientItems) {
                 Quest ingredientQuest = itemToQuestMap.get(ingredientItem);
                 if (ingredientQuest != null) {
+                    // Check if adding this dependency would create a cycle
+                    List<ResourceLocation> cyclePath = findCyclePath(outputQuest, ingredientQuest, questDependencies);
+                    if (cyclePath != null) {
+                        String cycleStr = String.join(" -> ", cyclePath.stream().map(ResourceLocation::toString).toList());
+                        LOGGER.warn("Skipping dependency {} -> {} to avoid circular dependency. Cycle: {} -> {}",
+                                  ingredientItem, outputItem, cycleStr, ingredientItem);
+                        skippedCycles++;
+                        continue;
+                    }
+
                     try {
                         outputQuest.addDependency(ingredientQuest);
+                        questDependencies.computeIfAbsent(outputQuest, k -> new HashSet<>()).add(ingredientQuest);
                         dependenciesCreated++;
                         LOGGER.debug("Added dependency: {} -> {}", ingredientItem, outputItem);
                     } catch (Exception e) {
@@ -235,7 +251,77 @@ public abstract class AbstractTierlistGenerator<T> {
             }
         }
 
-        LOGGER.info("Created {} quest dependencies based on crafting relationships", dependenciesCreated);
+        LOGGER.info("Created {} quest dependencies ({} skipped to avoid cycles)",
+                   dependenciesCreated, skippedCycles);
+    }
+
+    /**
+     * Find the cycle path if adding a dependency would create a cycle.
+     * Returns the path of item IDs that form the cycle, or null if no cycle would be created.
+     *
+     * @param dependent The quest that would depend on dependency
+     * @param dependency The quest that would be depended upon
+     * @param questDependencies Current quest dependency graph
+     * @return List of item IDs forming the cycle, or null if no cycle
+     */
+    private List<ResourceLocation> findCyclePath(Quest dependent, Quest dependency,
+                                                Map<Quest, Set<Quest>> questDependencies) {
+        // Build reverse lookup: Quest -> ItemId
+        Map<Quest, ResourceLocation> questToItem = new HashMap<>();
+        for (Map.Entry<ResourceLocation, Quest> entry : itemToQuestMap.entrySet()) {
+            questToItem.put(entry.getValue(), entry.getKey());
+        }
+
+        // If dependency already depends on dependent (directly or indirectly), adding this would create a cycle
+        List<Quest> cyclePath = findDependencyPath(dependency, dependent, questDependencies, new ArrayList<>(), new HashSet<>());
+
+        if (cyclePath != null) {
+            // Convert quest path to item ID path
+            List<ResourceLocation> itemPath = new ArrayList<>();
+            for (Quest quest : cyclePath) {
+                ResourceLocation itemId = questToItem.get(quest);
+                if (itemId != null) {
+                    itemPath.add(itemId);
+                }
+            }
+            return itemPath;
+        }
+
+        return null;
+    }
+
+    /**
+     * Find a dependency path from 'from' to 'to' using DFS.
+     * Returns the path as a list of quests, or null if no path exists.
+     */
+    private List<Quest> findDependencyPath(Quest from, Quest to,
+                                          Map<Quest, Set<Quest>> questDependencies,
+                                          List<Quest> currentPath,
+                                          Set<Quest> visited) {
+        if (from.equals(to)) {
+            currentPath.add(from);
+            return new ArrayList<>(currentPath);
+        }
+
+        if (visited.contains(from)) {
+            return null; // Already checked this path
+        }
+
+        visited.add(from);
+        currentPath.add(from);
+
+        Set<Quest> deps = questDependencies.get(from);
+        if (deps != null) {
+            for (Quest dep : deps) {
+                List<Quest> result = findDependencyPath(dep, to, questDependencies, currentPath, visited);
+                if (result != null) {
+                    return result;
+                }
+            }
+        }
+
+        currentPath.remove(currentPath.size() - 1);
+        return null;
     }
 
     // Abstract methods that subclasses must implement

@@ -20,7 +20,7 @@ public class BlankMixinMod
         forgeBus.register(this);
 
         // Register Auto-Tierlist config
-        context.registerConfig(ModConfig.Type.COMMON, AutoTierlistConfig.SPEC);
+        context.registerConfig(ModConfig.Type.CLIENT, AutoTierlistConfig.SPEC);
 
         LOGGER.info("Auto-Tierlist module loaded");
     }
