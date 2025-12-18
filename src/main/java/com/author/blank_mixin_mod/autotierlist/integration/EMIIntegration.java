@@ -126,7 +126,7 @@ public class EMIIntegration {
         if (recipe.getBackingRecipe() != null) {
             recipeId = recipe.getBackingRecipe().getId().toString();
         }
-        var isTrim = recipeId.contains("_trim_");
+        var isTrim = recipeId.contains("trim");
         if (isTrim) {
             return false;
         }

@@ -69,20 +69,6 @@ public class QuestFactory {
     }
 
     /**
-     * Create a secret quest that marks a tier boundary.
-     *
-     * @param questFile The quest file
-     * @param chapter The parent chapter
-     * @param tier The tier number
-     * @param y Y coordinate
-     * @return The created quest
-     */
-    public static Quest createSecretTierQuest(ServerQuestFile questFile, Chapter chapter,
-                                             int tier, double y) {
-        return createSecretTierQuest(questFile, chapter, "Tier " + tier, y);
-    }
-
-    /**
      * Create a secret quest that marks a tier boundary with a custom title.
      *
      * @param questFile The quest file
