@@ -16,14 +16,11 @@ public class AutoTierlistConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_WEAPON_TIERLIST;
     public static final ForgeConfigSpec.BooleanValue ENABLE_ARMOR_TIERLIST;
 
-    // Tier calculation
-    public static final ForgeConfigSpec.DoubleValue TIER_MULTIPLIER;
-
     // Progression settings
     public static final ForgeConfigSpec.BooleanValue ENABLE_PROGRESSION_ALIGNMENT;
 
     // Layout settings
-    public static final ForgeConfigSpec.IntValue ROWS_PER_TIER;
+    //public static final ForgeConfigSpec.IntValue ROWS_PER_TIER;
     public static final ForgeConfigSpec.DoubleValue QUEST_SPACING_X;
     public static final ForgeConfigSpec.DoubleValue QUEST_SPACING_Y;
     public static final ForgeConfigSpec.DoubleValue TIER_SPACING_Y;
@@ -67,32 +64,27 @@ public class AutoTierlistConfig {
             .comment("Enable armor tierlist generation")
             .define("enableArmorTierlist", true);
 
-        // Tier calculation
-        TIER_MULTIPLIER = BUILDER
-            .comment("Multiplier for tier calculation (tier N = damage/armor in range [N*multiplier, (N+1)*multiplier))")
-            .defineInRange("tierMultiplier", 1.6, 0.1, 10.0);
-
         // Progression settings
         ENABLE_PROGRESSION_ALIGNMENT = BUILDER
             .comment("Align items in the same column if they share crafting relationships")
             .define("enableProgressionAlignment", true);
 
         // Layout settings
-        ROWS_PER_TIER = BUILDER
+        /*ROWS_PER_TIER = BUILDER
             .comment("Number of rows per tier")
-            .defineInRange("rowsPerTier", 3, 1, 10);
+            .defineInRange("rowsPerTier", 1, 1, 10);*/
 
         QUEST_SPACING_X = BUILDER
             .comment("Horizontal spacing between quests")
-            .defineInRange("questSpacingX", 1.5, 0.5, 5.0);
+            .defineInRange("questSpacingX", 1, 0.5, 5.0);
 
         QUEST_SPACING_Y = BUILDER
             .comment("Vertical spacing between quests")
-            .defineInRange("questSpacingY", 1.5, 0.5, 5.0);
+            .defineInRange("questSpacingY", 1, 0.5, 5.0);
 
         TIER_SPACING_Y = BUILDER
             .comment("Extra vertical spacing between tiers")
-            .defineInRange("tierSpacingY", 3.0, 0.0, 10.0);
+            .defineInRange("tierSpacingY", 1, 0.0, 10.0);
 
         // Override lists
         WEAPON_TIER_OVERRIDES = BUILDER
@@ -153,18 +145,33 @@ public class AutoTierlistConfig {
             .define("useAttributeDetection", true);
 
         BUILDER.pop();
+
+        tierMultiplier = 1.6;
+        rowsPerTier = 1;
     }
 
     public static final ForgeConfigSpec SPEC = BUILDER.build();
 
     @SubscribeEvent
-    public static void onLoad(final ModConfigEvent event) {
+    public static void onLoad(final ModConfigEvent.Loading event) {
+        refreshCachedValues();
+    }
+
+    @SubscribeEvent
+    public static void onReload(final ModConfigEvent.Reloading event) {
+        refreshCachedValues();
+    }
+
+    /**
+     * Refresh all cached config values from the config spec.
+     * Called automatically on config load/reload, or can be called manually.
+     */
+    public static void refreshCachedValues() {
         autoGenerateOnStart = AUTO_GENERATE_ON_START.get();
         enableWeaponTierlist = ENABLE_WEAPON_TIERLIST.get();
         enableArmorTierlist = ENABLE_ARMOR_TIERLIST.get();
-        tierMultiplier = TIER_MULTIPLIER.get();
         enableProgressionAlignment = ENABLE_PROGRESSION_ALIGNMENT.get();
-        rowsPerTier = ROWS_PER_TIER.get();
+//        rowsPerTier = ROWS_PER_TIER.get();
         questSpacingX = QUEST_SPACING_X.get();
         questSpacingY = QUEST_SPACING_Y.get();
         tierSpacingY = TIER_SPACING_Y.get();

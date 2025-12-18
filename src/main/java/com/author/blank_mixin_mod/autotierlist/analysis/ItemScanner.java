@@ -51,16 +51,18 @@ public class ItemScanner {
                     continue;
                 }
 
-                // Get attack damage attribute for mainhand
+                // Get attack damage and attack speed attributes for mainhand
                 Multimap<Attribute, AttributeModifier> modifiers = stack.getAttributeModifiers(EquipmentSlot.MAINHAND);
                 double damage = getAttributeValue(modifiers, Attributes.ATTACK_DAMAGE);
+                double attackSpeed = getAttributeValue(modifiers, Attributes.ATTACK_SPEED);
 
                 // Check if item should be included based on filter
                 if (filter.isWeapon(itemId, stack, damage > 0)) {
-                    // If damage is 0 but item passed filter (tag/manual list), still need damage value
-                    // Use 0 as damage - it will be placed in tier 0
-                    weapons.add(new ItemData.WeaponData(itemId, stack, Math.max(damage, 0)));
-                    LOGGER.debug("Found weapon: {} (damage: {})", itemId, damage);
+                    attackSpeed = Attributes.ATTACK_SPEED.getDefaultValue() + attackSpeed;
+                    damage = Attributes.ATTACK_DAMAGE.getDefaultValue() + damage;
+                    weapons.add(new ItemData.WeaponData(itemId, stack, damage, attackSpeed));
+                    LOGGER.debug("Found weapon: {} (damage: {}, attack speed: {}, DPS: {})",
+                               itemId, damage, attackSpeed, damage * attackSpeed);
                 }
             } catch (Exception e) {
                 LOGGER.warn("Error scanning item {}: {}", item, e.getMessage());
@@ -100,7 +102,7 @@ public class ItemScanner {
                 // Check if item should be included based on filter
                 if (filter.isArmor(itemId, stack, armor > 0)) {
                     // If armor is 0 but item passed filter (tag/manual list), still need values
-                    armors.add(new ItemData.ArmorData(itemId, stack, Math.max(armor, 0), toughness));
+                    armors.add(new ItemData.ArmorData(itemId, stack, armor, toughness));
                     LOGGER.debug("Found armor: {} (armor: {}, toughness: {})",
                                itemId, armor, toughness);
                 }

@@ -23,28 +23,30 @@ public class TierCalculator {
     }
 
     /**
-     * Assign weapons to tiers based on their damage.
-     * Tier formula: tier = floor(damage / tierMultiplier)
+     * Assign weapons to tiers based on their DPS (damage * attack speed).
+     * Tier formula: tier = floor(DPS / tierMultiplier)
      */
     public Map<Integer, List<TieredItem<ItemData.WeaponData>>> assignWeaponTiers(List<ItemData.WeaponData> weapons) {
         Map<Integer, List<TieredItem<ItemData.WeaponData>>> tierMap = new HashMap<>();
 
         for (ItemData.WeaponData weapon : weapons) {
+            double dps = weapon.getDPS();
+
             // Check for manual override first
             int tier = overrideManager.getWeaponOverride(weapon.id())
-                .orElseGet(() -> calculateTier(weapon.damage()));
+                .orElseGet(() -> calculateTier(dps));
 
             // Calculate which row within the tier (0 = bottom, rowsPerTier-1 = top)
-            int row = calculateRowInTier(weapon.damage(), tier);
+            int row = calculateRowInTier(dps, tier);
 
             tierMap.computeIfAbsent(tier, k -> new ArrayList<>())
                 .add(new TieredItem<>(weapon, tier, row));
         }
 
-        // Sort each tier's items by row (and then by damage within the row)
+        // Sort each tier's items by row (and then by DPS within the row)
         for (List<TieredItem<ItemData.WeaponData>> items : tierMap.values()) {
             items.sort(Comparator.comparingInt(TieredItem<ItemData.WeaponData>::row)
-                .thenComparing(item -> -item.data().damage())); // Descending damage within row
+                .thenComparing(item -> -item.data().getDPS())); // Descending DPS within row
         }
 
         LOGGER.info("Assigned {} weapons to {} tiers", weapons.size(), tierMap.size());
@@ -64,7 +66,7 @@ public class TierCalculator {
             int tier = overrideManager.getArmorOverride(armor.id())
                 .orElseGet(() -> {
                     double score = armor.getScore();
-                    return calculateTier(score);
+                    return (int) Math.round(score);
                 });
 
             // Calculate which row within the tier
@@ -100,7 +102,8 @@ public class TierCalculator {
      * @return Row index (0 = bottom/far from next tier, rowsPerTier-1 = top/close to next tier)
      */
     private int calculateRowInTier(double value, int tier) {
-        double tierMin = tier * tierMultiplier;
+        return 0;
+        /*double tierMin = tier * tierMultiplier;
         double tierMax = (tier + 1) * tierMultiplier;
         double range = tierMax - tierMin;
 
@@ -114,7 +117,7 @@ public class TierCalculator {
         int row = (int) (position * rowsPerTier);
 
         // Ensure row is within bounds
-        return Math.min(row, rowsPerTier - 1);
+        return Math.min(row, rowsPerTier - 1);*/
     }
 
     /**

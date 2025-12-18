@@ -10,13 +10,21 @@ import net.minecraft.world.item.ItemStack;
 public class ItemData {
 
     /**
-     * Weapon data with attack damage.
+     * Weapon data with attack damage and attack speed.
      */
-    public record WeaponData(ResourceLocation id, ItemStack stack, double damage) implements Comparable<WeaponData> {
+    public record WeaponData(ResourceLocation id, ItemStack stack, double damage, double attackSpeed) implements Comparable<WeaponData> {
+
+        /**
+         * Calculate DPS (damage per second) using the formula: damage * attackSpeed
+         */
+        public double getDPS() {
+            return damage * attackSpeed;
+        }
+
         @Override
         public int compareTo(WeaponData other) {
-            // Sort by damage descending
-            return Double.compare(other.damage, this.damage);
+            // Sort by DPS descending
+            return Double.compare(other.getDPS(), this.getDPS());
         }
     }
 
@@ -31,10 +39,10 @@ public class ItemData {
     ) implements Comparable<ArmorData> {
 
         /**
-         * Calculate the armor score using the formula: armor * (toughness + 8) / 5
+         * Calculate the armor score using the formula: armor * (toughness + 8) / 5, from wiki
          */
         public double getScore() {
-            return armor * (toughness + 8.0) / 5.0;
+            return armor + toughness * 0.6;
         }
 
         @Override

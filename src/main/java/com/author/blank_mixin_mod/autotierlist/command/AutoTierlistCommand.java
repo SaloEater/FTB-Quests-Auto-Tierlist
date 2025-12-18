@@ -8,6 +8,8 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 
+import static com.author.blank_mixin_mod.autotierlist.config.AutoTierlistConfig.*;
+
 /**
  * Commands for managing Auto-Tierlist generation.
  */
@@ -91,12 +93,21 @@ public class AutoTierlistCommand {
     private static int reload(CommandContext<CommandSourceStack> context) {
         try {
             context.getSource().sendSuccess(
+                () -> Component.literal("§e[Auto-Tierlist] Reloading config..."),
+                true
+            );
+
+            // Refresh cached config values
+            // Note: Config file changes are automatically detected by Forge
+            // This ensures our cached values match the current config state
+            refreshCachedValues();
+
+            context.getSource().sendSuccess(
                 () -> Component.literal("§e[Auto-Tierlist] Clearing old chapters and regenerating..."),
                 true
             );
 
-            // Config is automatically reloaded by Forge when modified
-            // Just regenerate (which includes cleanup)
+            // Regenerate with new config values
             TierlistGenerator generator = new TierlistGenerator();
             generator.generateAll(context.getSource().getServer());
 

@@ -140,13 +140,13 @@ public class WeaponTierlistGenerator {
             AutoTierlistConfig.tierSpacingY
         );
 
-        // Calculate damage value for this tier
-        double minDamage = tier * AutoTierlistConfig.tierMultiplier;
-        double maxDamage = (tier + 1) * AutoTierlistConfig.tierMultiplier;
-        String damageLabel = String.format("Damage: [%.1f-%.1f)", minDamage, maxDamage);
+        // Calculate DPS value for this tier
+        double minDPS = tier * AutoTierlistConfig.tierMultiplier;
+        double maxDPS = (tier + 1) * AutoTierlistConfig.tierMultiplier;
+        String dpsLabel = String.format("DPS: [%.1f-%.1f)", minDPS, maxDPS);
 
-        // Create secret tier marker quest with damage range
-        QuestFactory.createSecretTierQuest(questFile, chapter, damageLabel, tierBaseY);
+        // Create secret tier marker quest with DPS range
+        QuestFactory.createSecretTierQuest(questFile, chapter, dpsLabel, tierBaseY);
 
         // Group items by row
         Map<Integer, List<TierCalculator.TieredItem<ItemData.WeaponData>>> rowMap = new HashMap<>();
@@ -242,102 +242,12 @@ public class WeaponTierlistGenerator {
 
     /**
      * Assign column numbers for progression mode.
-     * Items with no dependencies go left (sequential).
-     * Items with dependencies form vertical chains with their exclusive dependencies.
      */
     private Map<ResourceLocation, Integer> assignProgressionColumns(
             List<ResourceLocation> items,
             Map<ResourceLocation, Set<ResourceLocation>> recipeGraph,
             Map<ResourceLocation, Integer> tierMap) {
-
-        Map<ResourceLocation, Integer> columnAssignments = new HashMap<>();
-        Set<ResourceLocation> itemSet = new HashSet<>(items);
-
-        // Build reverse graph: ingredient -> outputs that use it
-        Map<ResourceLocation, Set<ResourceLocation>> reverseGraph = new HashMap<>();
-        for (Map.Entry<ResourceLocation, Set<ResourceLocation>> entry : recipeGraph.entrySet()) {
-            ResourceLocation output = entry.getKey();
-            for (ResourceLocation ingredient : entry.getValue()) {
-                if (itemSet.contains(ingredient)) {
-                    reverseGraph.computeIfAbsent(ingredient, k -> new HashSet<>()).add(output);
-                }
-            }
-        }
-
-        // Find items that have dependencies
-        Set<ResourceLocation> itemsWithDependencies = new HashSet<>();
-        for (ResourceLocation item : items) {
-            if (recipeGraph.containsKey(item)) {
-                Set<ResourceLocation> ingredients = recipeGraph.get(item);
-                if (ingredients.stream().anyMatch(itemSet::contains)) {
-                    itemsWithDependencies.add(item);
-                }
-            }
-        }
-
-        // Track which dependencies have been "claimed" by an output for column sharing
-        Set<ResourceLocation> claimedDependencies = new HashSet<>();
-
-        // Start assigning columns after no-dependency items
-        int nextColumn = items.size();
-
-        // Sort items with dependencies by tier for consistent ordering
-        List<ResourceLocation> withDeps = new ArrayList<>(itemsWithDependencies);
-        withDeps.sort(Comparator.comparing(item -> tierMap.getOrDefault(item, Integer.MAX_VALUE)));
-
-        for (ResourceLocation item : withDeps) {
-            Set<ResourceLocation> ingredients = recipeGraph.getOrDefault(item, Collections.emptySet());
-
-            // Try to find an unclaimed dependency to share a column with
-            ResourceLocation chosenDependency = null;
-            for (ResourceLocation ingredient : ingredients) {
-                if (!itemSet.contains(ingredient)) continue;
-                if (claimedDependencies.contains(ingredient)) continue;
-
-                // Prefer exclusive dependencies (used only by this item)
-                Set<ResourceLocation> usedBy = reverseGraph.getOrDefault(ingredient, Collections.emptySet());
-                if (usedBy.size() == 1) {
-                    chosenDependency = ingredient;
-                    claimedDependencies.add(ingredient);
-                    break;
-                }
-            }
-
-            // If no exclusive dependency, try to find any unclaimed dependency
-            if (chosenDependency == null) {
-                for (ResourceLocation ingredient : ingredients) {
-                    if (!itemSet.contains(ingredient)) continue;
-                    if (claimedDependencies.contains(ingredient)) continue;
-
-                    chosenDependency = ingredient;
-                    claimedDependencies.add(ingredient);
-                    break;
-                }
-            }
-
-            if (chosenDependency != null) {
-                // Share column with the chosen dependency
-                if (columnAssignments.containsKey(chosenDependency)) {
-                    // Dependency already has a column, use it
-                    columnAssignments.put(item, columnAssignments.get(chosenDependency));
-                } else {
-                    // Assign both to a new column (vertical chain)
-                    int column = nextColumn++;
-                    columnAssignments.put(chosenDependency, column);
-                    columnAssignments.put(item, column);
-                }
-            } else {
-                // All dependencies are claimed, assign new column
-                columnAssignments.put(item, nextColumn++);
-            }
-        }
-
-        LOGGER.info("Assigned {} items to progression columns (no-deps: {}, with-deps: {})",
-            columnAssignments.size(),
-            items.size() - itemsWithDependencies.size(),
-            itemsWithDependencies.size());
-
-        return columnAssignments;
+        return ProgressionHelper.assignProgressionColumns(items, recipeGraph, tierMap);
     }
 
 }
