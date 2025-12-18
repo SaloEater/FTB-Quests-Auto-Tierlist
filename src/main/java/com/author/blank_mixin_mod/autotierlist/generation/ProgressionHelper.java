@@ -23,7 +23,8 @@ public class ProgressionHelper {
     public static Map<ResourceLocation, Integer> assignProgressionColumns(
             List<ResourceLocation> items,
             Map<ResourceLocation, Set<ResourceLocation>> recipeGraph,
-            Map<ResourceLocation, Integer> tierMap) {
+            Map<ResourceLocation, Integer> tierMap,
+            Map<ResourceLocation, Double> scoreMap) {
 
         Map<ResourceLocation, Integer> columnAssignments = new HashMap<>();
         Set<ResourceLocation> itemSet = new HashSet<>(items);
@@ -121,7 +122,7 @@ public class ProgressionHelper {
             int chainStartColumn = nextColumn;
 
             // Assign columns within this chain
-            assignChainColumns(chain, columnAssignments, recipeGraph, reverseGraph, itemSet, tierMap, chainStartColumn);
+            assignChainColumns(chain, columnAssignments, recipeGraph, reverseGraph, itemSet, tierMap, scoreMap, chainStartColumn);
 
             // Move to next available column after this chain
             int maxColumnUsed = chain.stream()
@@ -175,6 +176,7 @@ public class ProgressionHelper {
     /**
      * Assign columns to items within a single chain.
      * Columns are assigned in tier order (lower tier = lower column number).
+     * Within the same tier, items are sorted by score (lower score = earlier column, weaker items first).
      */
     private static void assignChainColumns(Set<ResourceLocation> chain,
                                     Map<ResourceLocation, Integer> columnAssignments,
@@ -182,13 +184,16 @@ public class ProgressionHelper {
                                     Map<ResourceLocation, Set<ResourceLocation>> reverseGraph,
                                     Set<ResourceLocation> itemSet,
                                     Map<ResourceLocation, Integer> tierMap,
+                                    Map<ResourceLocation, Double> scoreMap,
                                     int startColumn) {
 
         Set<ResourceLocation> assigned = new HashSet<>();
 
-        // Sort chain items by tier (ascending)
+        // Sort chain items by tier (ascending), then by score (ascending - weaker first), then by ID for deterministic ordering
         List<ResourceLocation> chainItems = new ArrayList<>(chain);
-        chainItems.sort(Comparator.comparing(item -> tierMap.getOrDefault(item, Integer.MAX_VALUE)));
+        chainItems.sort(Comparator.comparing((ResourceLocation item) -> tierMap.getOrDefault(item, Integer.MAX_VALUE))
+            .thenComparing((ResourceLocation item) -> scoreMap.getOrDefault(item, 0.0)) // Weaker items first
+            .thenComparing(ResourceLocation::toString));
 
         // First pass: determine which items share columns
         Map<ResourceLocation, ResourceLocation> sharesColumnWith = new HashMap<>();

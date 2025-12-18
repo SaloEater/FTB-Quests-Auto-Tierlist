@@ -67,4 +67,9 @@ public class ArmorTierlistGenerator extends AbstractTierlistGenerator<ItemData.A
     protected String getTierLabel(int tier) {
         return "Armor:" + tier;
     }
+
+    @Override
+    protected double getItemScore(ItemData.ArmorData item) {
+        return item.getScore();
+    }
 }

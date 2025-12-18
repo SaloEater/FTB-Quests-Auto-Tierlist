@@ -75,15 +75,18 @@ public abstract class AbstractTierlistGenerator<T> {
                         .collect(Collectors.toList());
                     recipeGraph = detector.getRecipeGraph(itemIds);
 
-                    // Build tier map for sorting chains
+                    // Build tier map and score map for sorting chains
                     Map<ResourceLocation, Integer> tierMap = new HashMap<>();
+                    Map<ResourceLocation, Double> scoreMap = new HashMap<>();
                     for (Map.Entry<Integer, List<TierCalculator.TieredItem<T>>> entry : tiers.entrySet()) {
                         for (TierCalculator.TieredItem<T> item : entry.getValue()) {
-                            tierMap.put(getItemId(item.data()), item.tier());
+                            ResourceLocation id = getItemId(item.data());
+                            tierMap.put(id, item.tier());
+                            scoreMap.put(id, getItemScore(item.data()));
                         }
                     }
 
-                    columnAssignments = ProgressionHelper.assignProgressionColumns(itemIds, recipeGraph, tierMap);
+                    columnAssignments = ProgressionHelper.assignProgressionColumns(itemIds, recipeGraph, tierMap, scoreMap);
                     LOGGER.info("Assigned {} {} to progression columns", columnAssignments.size(), getItemTypeName());
                 } catch (Exception e) {
                     LOGGER.error("Failed to detect progression chains, continuing without progression alignment", e);
@@ -166,12 +169,16 @@ public abstract class AbstractTierlistGenerator<T> {
                                    List<TierCalculator.TieredItem<T>> items,
                                    double questY,
                                    Map<ResourceLocation, Integer> columnAssignments) {
-        // Sort by column assignment if using progression, otherwise sequential
+        // Sort items: first by column assignment, then by score (weaker first)
         if (!columnAssignments.isEmpty()) {
-            // Sort by assigned column (items without assignments get -1 to appear first)
-            items.sort(Comparator.comparing(item ->
-                columnAssignments.getOrDefault(getItemId(item.data()), -1)
-            ));
+            // Sort by assigned column (items without assignments get -1 to appear first),
+            // then by score (ascending - weaker items first)
+            items.sort(Comparator.comparing((TierCalculator.TieredItem<T> item) ->
+                    columnAssignments.getOrDefault(getItemId(item.data()), -1))
+                .thenComparing(item -> getItemScore(item.data())));
+        } else {
+            // No progression mode - sort all items by score (weaker first)
+            items.sort(Comparator.comparing(item -> getItemScore(item.data())));
         }
 
         // Track current X position for sequential placement
@@ -277,4 +284,10 @@ public abstract class AbstractTierlistGenerator<T> {
      * Get the tier label for displaying on the secret quest.
      */
     protected abstract String getTierLabel(int tier);
+
+    /**
+     * Get the numeric score for an item (DPS for weapons, armor score for armor).
+     * Used for sorting items within the same tier in progression mode.
+     */
+    protected abstract double getItemScore(T item);
 }
