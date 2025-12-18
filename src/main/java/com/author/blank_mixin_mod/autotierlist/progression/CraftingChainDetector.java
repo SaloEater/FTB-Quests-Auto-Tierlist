@@ -1,5 +1,7 @@
 package com.author.blank_mixin_mod.autotierlist.progression;
 
+import com.author.blank_mixin_mod.autotierlist.integration.JEIIntegration;
+import com.author.blank_mixin_mod.autotierlist.mixin.SmithingTransformRecipeAccessor;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.Ingredient;
@@ -14,6 +16,9 @@ import java.util.*;
 /**
  * Detects crafting relationships between items and assigns them to columns
  * for progression-aligned quest layouts.
+ *
+ * Uses JEI (Just Enough Items) when available to get comprehensive recipe information
+ * across all recipe types. Falls back to vanilla RecipeManager if JEI is not present.
  */
 public class CraftingChainDetector {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -91,54 +96,117 @@ public class CraftingChainDetector {
     /**
      * Build a graph of crafting relationships: item -> ingredients.
      *
+     * Uses JEI when available to get recipes from all sources (including modded recipe types).
+     * Falls back to vanilla RecipeManager for crafting recipes only if JEI is not available.
+     *
      * @param relevantItems Only track relationships for these items
      * @return Map of output item to set of ingredient items
      */
     private Map<ResourceLocation, Set<ResourceLocation>> buildRecipeGraph(List<ResourceLocation> relevantItems) {
+        // Try JEI first for comprehensive recipe coverage
+        if (JEIIntegration.isAvailable()) {
+            LOGGER.info("Using JEI for recipe graph (all recipe types)");
+            return buildRecipeGraphWithJEI(relevantItems);
+        }
+
+        // Fallback to vanilla RecipeManager (crafting recipes only)
+        LOGGER.info("Using vanilla RecipeManager for recipe graph (crafting recipes only)");
+        return buildRecipeGraphVanilla(relevantItems);
+    }
+
+    /**
+     * Build recipe graph using JEI's comprehensive recipe system.
+     * This includes all recipe types: crafting, smelting, smithing, modded recipes, etc.
+     */
+    private Map<ResourceLocation, Set<ResourceLocation>> buildRecipeGraphWithJEI(List<ResourceLocation> relevantItems) {
+        try {
+            Map<ResourceLocation, Set<ResourceLocation>> graph = JEIIntegration.getRecipesUsingItemAsIngredient(relevantItems);
+            LOGGER.info("Built JEI recipe graph with {} entries", graph.size());
+            return graph;
+        } catch (Exception e) {
+            LOGGER.error("Error building JEI recipe graph, falling back to vanilla", e);
+            return buildRecipeGraphVanilla(relevantItems);
+        }
+    }
+
+    /**
+     * Build recipe graph using vanilla RecipeManager.
+     * Includes crafting and smithing recipes.
+     */
+    private Map<ResourceLocation, Set<ResourceLocation>> buildRecipeGraphVanilla(List<ResourceLocation> relevantItems) {
         Map<ResourceLocation, Set<ResourceLocation>> graph = new HashMap<>();
         Set<ResourceLocation> relevantSet = new HashSet<>(relevantItems);
 
         try {
             // Iterate through all crafting recipes
             for (Recipe<?> recipe : recipeManager.getAllRecipesFor(RecipeType.CRAFTING)) {
-                try {
-                    ResourceLocation outputId = ForgeRegistries.ITEMS.getKey(
-                        recipe.getResultItem(null).getItem()
-                    );
+                processRecipe(recipe, relevantSet, graph);
+            }
 
-                    // Only track if output is in our relevant items
-                    if (outputId == null || !relevantSet.contains(outputId)) {
-                        continue;
-                    }
-
-                    // Extract all ingredients
-                    Set<ResourceLocation> ingredients = new HashSet<>();
-                    for (Ingredient ingredient : recipe.getIngredients()) {
-                        if (ingredient.isEmpty()) continue;
-
-                        // Get all possible items for this ingredient
-                        for (var stack : ingredient.getItems()) {
-                            ResourceLocation ingredientId = ForgeRegistries.ITEMS.getKey(stack.getItem());
-                            if (ingredientId != null) {
-                                ingredients.add(ingredientId);
-                            }
-                        }
-                    }
-
-                    if (!ingredients.isEmpty()) {
-                        graph.put(outputId, ingredients);
-                    }
-
-                } catch (Exception e) {
-                    LOGGER.debug("Error processing recipe {}: {}", recipe.getId(), e.getMessage());
-                }
+            // Iterate through all smithing recipes
+            for (Recipe<?> recipe : recipeManager.getAllRecipesFor(RecipeType.SMITHING)) {
+                processRecipe(recipe, relevantSet, graph);
             }
         } catch (Exception e) {
-            LOGGER.error("Error building recipe graph", e);
+            LOGGER.error("Error building vanilla recipe graph", e);
         }
 
-        LOGGER.info("Built recipe graph with {} entries", graph.size());
+        LOGGER.info("Built vanilla recipe graph with {} entries", graph.size());
         return graph;
+    }
+
+    /**
+     * Process a single recipe and add to graph.
+     */
+    private void processRecipe(Recipe<?> recipe, Set<ResourceLocation> relevantSet,
+                               Map<ResourceLocation, Set<ResourceLocation>> graph) {
+        try {
+            ResourceLocation outputId = ForgeRegistries.ITEMS.getKey(
+                recipe.getResultItem(null).getItem()
+            );
+
+            // Only track if output is in our relevant items
+            if (outputId == null || !relevantSet.contains(outputId)) {
+                return;
+            }
+
+            // Extract all ingredients
+            Set<ResourceLocation> ingredients = new HashSet<>();
+
+            // Special handling for SmithingTransformRecipe
+            if (recipe instanceof net.minecraft.world.item.crafting.SmithingTransformRecipe smithingRecipe) {
+                var accessor = (SmithingTransformRecipeAccessor) smithingRecipe;
+                extractIngredient(accessor.getTemplate(), ingredients);
+                extractIngredient(accessor.getBase(), ingredients);
+                extractIngredient(accessor.getAddition(), ingredients);
+            } else {
+                // Standard recipe handling
+                for (Ingredient ingredient : recipe.getIngredients()) {
+                    extractIngredient(ingredient, ingredients);
+                }
+            }
+
+            if (!ingredients.isEmpty()) {
+                graph.put(outputId, ingredients);
+            }
+
+        } catch (Exception e) {
+            LOGGER.debug("Error processing recipe {}: {}", recipe.getId(), e.getMessage());
+        }
+    }
+
+    /**
+     * Extract items from a single ingredient.
+     */
+    private void extractIngredient(Ingredient ingredient, Set<ResourceLocation> ingredients) {
+        if (ingredient.isEmpty()) return;
+
+        for (var stack : ingredient.getItems()) {
+            ResourceLocation ingredientId = ForgeRegistries.ITEMS.getKey(stack.getItem());
+            if (ingredientId != null) {
+                ingredients.add(ingredientId);
+            }
+        }
     }
 
     /**
