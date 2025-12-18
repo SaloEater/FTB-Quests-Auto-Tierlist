@@ -35,6 +35,7 @@ public class AutoTierlistConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> WEAPON_ITEMS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ARMOR_ITEMS;
     public static final ForgeConfigSpec.BooleanValue USE_ATTRIBUTE_DETECTION;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_EMI_CATEGORIES;
 
     // Cached values for fast access
     public static boolean autoGenerateOnStart;
@@ -47,6 +48,7 @@ public class AutoTierlistConfig {
     public static double questSpacingY;
     public static double tierSpacingY;
     public static boolean useAttributeDetection;
+    public static List<String> skippedEmiCategories;
 
     static {
         BUILDER.comment("Auto-Tierlist Configuration").push("autotierlist");
@@ -144,6 +146,16 @@ public class AutoTierlistConfig {
                      "If false, only items matching tags or manual lists will be included")
             .define("useAttributeDetection", true);
 
+        SKIPPED_EMI_CATEGORIES = BUILDER
+            .comment("EMI recipe categories to skip when building crafting chains",
+                     "Format: \"modid:category_id\"",
+                     "Example: \"emi:smithing_trim\" to skip armor trim recipes",
+                     "Common categories to skip:",
+                     "  - emi:anvil_repairing (anvil repairs)")
+            .defineListAllowEmpty(List.of("skippedEmiCategories"),
+                                 () -> List.of("emi:anvil_repairing"),
+                                 obj -> obj instanceof String);
+
         BUILDER.pop();
 
         tierMultiplier = 1.6;
@@ -176,5 +188,6 @@ public class AutoTierlistConfig {
         questSpacingY = QUEST_SPACING_Y.get();
         tierSpacingY = TIER_SPACING_Y.get();
         useAttributeDetection = USE_ATTRIBUTE_DETECTION.get();
+        skippedEmiCategories = List.copyOf(SKIPPED_EMI_CATEGORIES.get());
     }
 }

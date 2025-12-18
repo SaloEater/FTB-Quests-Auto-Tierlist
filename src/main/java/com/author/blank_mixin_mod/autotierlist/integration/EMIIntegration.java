@@ -1,8 +1,10 @@
 package com.author.blank_mixin_mod.autotierlist.integration;
 
+import com.author.blank_mixin_mod.autotierlist.config.AutoTierlistConfig;
 import com.mojang.logging.LogUtils;
 import dev.emi.emi.api.EmiApi;
 import dev.emi.emi.api.recipe.EmiRecipe;
+import dev.emi.emi.api.recipe.EmiRecipeCategory;
 import dev.emi.emi.api.recipe.EmiRecipeManager;
 import dev.emi.emi.api.stack.EmiIngredient;
 import dev.emi.emi.api.stack.EmiStack;
@@ -68,6 +70,11 @@ public class EMIIntegration {
         Map<ResourceLocation, Set<ResourceLocation>> recipeGraph = new HashMap<>();
         Set<ResourceLocation> relevantSet = new HashSet<>(relevantItems);
 
+        // Log skipped categories
+        if (!AutoTierlistConfig.skippedEmiCategories.isEmpty()) {
+            LOGGER.info("Skipping EMI recipe categories: {}", String.join(", ", AutoTierlistConfig.skippedEmiCategories));
+        }
+
         try {
             // For each relevant item, find recipes where it's the output
             for (ResourceLocation itemId : relevantItems) {
@@ -100,13 +107,31 @@ public class EMIIntegration {
         return recipeGraph;
     }
 
+    /**
+     * Check if a recipe should be included in crafting chain detection.
+     * Returns false if the recipe's category is in the skip list.
+     */
     private static boolean isRealRecipe(EmiRecipe recipe) {
+        var category = recipe.getCategory();
+        String categoryId = category.getId().toString();
+
+        // Check if this category is in the skip list
+        for (String skippedCategory : AutoTierlistConfig.skippedEmiCategories) {
+            if (categoryId.equals(skippedCategory)) {
+                return false;
+            }
+        }
+
         String recipeId = "";
         if (recipe.getBackingRecipe() != null) {
             recipeId = recipe.getBackingRecipe().getId().toString();
         }
         var isTrim = recipeId.contains("_trim_");
-        return !isTrim;
+        if (isTrim) {
+            return false;
+        }
+
+        return true;
     }
 
     /**

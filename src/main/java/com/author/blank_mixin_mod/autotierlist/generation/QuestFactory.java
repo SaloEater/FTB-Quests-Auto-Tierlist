@@ -55,12 +55,10 @@ public class QuestFactory {
                 }
                 subtitle.append(value);
                 if (i < list.size() - 1) {
-                    subtitle.append(ChatFormatting.WHITE);
-                    subtitle.append("; \\");
-                    subtitle.append(ChatFormatting.GRAY);
+                    subtitle.append("\n");
                 }
             }
-            var subtitleCleared = Component.literal(subtitle.toString().replaceAll("\s&\s", " \\& ")).toString();
+            var subtitleCleared = subtitle.toString().replaceAll("\s&\s", " \\& ");
             quest.setRawSubtitle(subtitleCleared);
         }
 
