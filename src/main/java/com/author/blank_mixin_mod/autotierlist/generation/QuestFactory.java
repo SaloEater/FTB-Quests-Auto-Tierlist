@@ -60,7 +60,7 @@ public class QuestFactory {
                     subtitle.append(ChatFormatting.GRAY);
                 }
             }
-            var subtitleCleared = Component.literal(subtitle.toString().replaceAll(" & ", " \\& ")).toString();
+            var subtitleCleared = Component.literal(subtitle.toString().replaceAll("\s&\s", " \\& ")).toString();
             quest.setRawSubtitle(subtitleCleared);
         }
 
