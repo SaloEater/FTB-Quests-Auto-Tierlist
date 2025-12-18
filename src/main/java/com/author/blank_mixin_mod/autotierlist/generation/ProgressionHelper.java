@@ -205,11 +205,13 @@ public class ProgressionHelper {
                 .filter(chain::contains)
                 .collect(Collectors.toList());
 
-            if (dependentsInChain.size() == 1) {
-                ResourceLocation dependent = dependentsInChain.get(0);
-                // Only share if dependent hasn't already claimed another item
-                if (!sharesColumnWith.containsKey(dependent)) {
-                    sharesColumnWith.put(dependent, item);
+            if (!dependentsInChain.isEmpty()) {
+                for (ResourceLocation dependent : dependentsInChain) {
+                    // Only share if dependent hasn't already claimed another item
+                    if (!sharesColumnWith.containsKey(dependent) && !(tierMap.get(item).equals(tierMap.get(dependent)))) {
+                        sharesColumnWith.put(dependent, item);
+                        break;
+                    }
                 }
             }
         }
