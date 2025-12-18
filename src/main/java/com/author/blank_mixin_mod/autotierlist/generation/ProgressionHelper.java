@@ -206,12 +206,18 @@ public class ProgressionHelper {
                 .collect(Collectors.toList());
 
             if (!dependentsInChain.isEmpty()) {
+                var leastTierDistance = Integer.MAX_VALUE;
+                ResourceLocation leastTearDistanceDependent = null;
                 for (ResourceLocation dependent : dependentsInChain) {
+                    var tierDistance = tierMap.get(dependent) - tierMap.get(item);
                     // Only share if dependent hasn't already claimed another item
-                    if (!sharesColumnWith.containsKey(dependent) && !(tierMap.get(item).equals(tierMap.get(dependent)))) {
-                        sharesColumnWith.put(dependent, item);
-                        break;
+                    if (!sharesColumnWith.containsKey(dependent) && tierDistance < leastTierDistance && tierDistance > 0) {
+                        leastTierDistance = tierDistance;
+                        leastTearDistanceDependent = dependent;
                     }
+                }
+                if (leastTearDistanceDependent != null) {
+                    sharesColumnWith.put(leastTearDistanceDependent, item);
                 }
             }
         }

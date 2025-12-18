@@ -6,7 +6,12 @@ import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import dev.ftb.mods.ftbquests.quest.task.CheckmarkTask;
 import dev.ftb.mods.ftbquests.quest.task.ItemTask;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
+
+import java.util.ArrayList;
 
 /**
  * Utility class for creating FTBQuests objects.
@@ -39,6 +44,24 @@ public class QuestFactory {
         task.setStackAndCount(item, 1);
         task.setConsumeItems(dev.ftb.mods.ftblibrary.config.Tristate.FALSE);
         task.onCreated();
+        var list = new ArrayList<Component>();
+        item.getItem().appendHoverText(item, null, list, TooltipFlag.NORMAL);
+        if (!list.isEmpty()) {
+            StringBuilder subtitle = new StringBuilder();
+            for (int i = 0; i < list.size(); i++) {
+                String value = list.get(i).getString();
+                if (value.isEmpty()) {
+                    continue;
+                }
+                subtitle.append(value);
+                if (i < list.size() - 1) {
+                    subtitle.append(ChatFormatting.WHITE);
+                    subtitle.append("; ");
+                    subtitle.append(ChatFormatting.GRAY);
+                }
+            }
+            quest.setRawSubtitle(subtitle.toString());
+        }
 
         // Register quest
         quest.onCreated();

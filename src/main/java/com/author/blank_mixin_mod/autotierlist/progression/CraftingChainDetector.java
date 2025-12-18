@@ -1,6 +1,6 @@
 package com.author.blank_mixin_mod.autotierlist.progression;
 
-import com.author.blank_mixin_mod.autotierlist.integration.JEIIntegration;
+import com.author.blank_mixin_mod.autotierlist.integration.EMIIntegration;
 import com.author.blank_mixin_mod.autotierlist.mixin.SmithingTransformRecipeAccessor;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
@@ -96,35 +96,35 @@ public class CraftingChainDetector {
     /**
      * Build a graph of crafting relationships: item -> ingredients.
      *
-     * Uses JEI when available to get recipes from all sources (including modded recipe types).
-     * Falls back to vanilla RecipeManager for crafting recipes only if JEI is not available.
+     * Uses EMI when available to get recipes from all sources (including modded recipe types).
+     * Falls back to vanilla RecipeManager for crafting and smithing recipes only if EMI is not available.
      *
      * @param relevantItems Only track relationships for these items
      * @return Map of output item to set of ingredient items
      */
     private Map<ResourceLocation, Set<ResourceLocation>> buildRecipeGraph(List<ResourceLocation> relevantItems) {
-        // Try JEI first for comprehensive recipe coverage
-        if (JEIIntegration.isAvailable()) {
-            LOGGER.info("Using JEI for recipe graph (all recipe types)");
-            return buildRecipeGraphWithJEI(relevantItems);
+        // Try EMI first for comprehensive recipe coverage
+        if (EMIIntegration.isAvailable()) {
+            LOGGER.info("Using EMI for recipe graph (all recipe types)");
+            return buildRecipeGraphWithEMI(relevantItems);
         }
 
-        // Fallback to vanilla RecipeManager (crafting recipes only)
-        LOGGER.info("Using vanilla RecipeManager for recipe graph (crafting recipes only)");
+        // Fallback to vanilla RecipeManager (crafting and smithing recipes only)
+        LOGGER.info("Using vanilla RecipeManager for recipe graph (crafting and smithing recipes only)");
         return buildRecipeGraphVanilla(relevantItems);
     }
 
     /**
-     * Build recipe graph using JEI's comprehensive recipe system.
+     * Build recipe graph using EMI's comprehensive recipe system.
      * This includes all recipe types: crafting, smelting, smithing, modded recipes, etc.
      */
-    private Map<ResourceLocation, Set<ResourceLocation>> buildRecipeGraphWithJEI(List<ResourceLocation> relevantItems) {
+    private Map<ResourceLocation, Set<ResourceLocation>> buildRecipeGraphWithEMI(List<ResourceLocation> relevantItems) {
         try {
-            Map<ResourceLocation, Set<ResourceLocation>> graph = JEIIntegration.getRecipesUsingItemAsIngredient(relevantItems);
-            LOGGER.info("Built JEI recipe graph with {} entries", graph.size());
+            Map<ResourceLocation, Set<ResourceLocation>> graph = EMIIntegration.getRecipesUsingItemAsIngredient(relevantItems);
+            LOGGER.info("Built EMI recipe graph with {} entries", graph.size());
             return graph;
         } catch (Exception e) {
-            LOGGER.error("Error building JEI recipe graph, falling back to vanilla", e);
+            LOGGER.error("Error building EMI recipe graph, falling back to vanilla", e);
             return buildRecipeGraphVanilla(relevantItems);
         }
     }
@@ -170,19 +170,19 @@ public class CraftingChainDetector {
                 return;
             }
 
-            // Extract all ingredients
+            // Extract all ingredients, skipping self-referential recipes
             Set<ResourceLocation> ingredients = new HashSet<>();
 
             // Special handling for SmithingTransformRecipe
             if (recipe instanceof net.minecraft.world.item.crafting.SmithingTransformRecipe smithingRecipe) {
                 var accessor = (SmithingTransformRecipeAccessor) smithingRecipe;
-                extractIngredient(accessor.getTemplate(), ingredients);
-                extractIngredient(accessor.getBase(), ingredients);
-                extractIngredient(accessor.getAddition(), ingredients);
+                extractIngredient(accessor.getTemplate(), outputId, ingredients);
+                extractIngredient(accessor.getBase(), outputId, ingredients);
+                extractIngredient(accessor.getAddition(), outputId, ingredients);
             } else {
                 // Standard recipe handling
                 for (Ingredient ingredient : recipe.getIngredients()) {
-                    extractIngredient(ingredient, ingredients);
+                    extractIngredient(ingredient, outputId, ingredients);
                 }
             }
 
@@ -197,13 +197,18 @@ public class CraftingChainDetector {
 
     /**
      * Extract items from a single ingredient.
+     * Skips ingredients that match the output item (self-referential recipes).
+     *
+     * @param ingredient The ingredient to extract from
+     * @param outputId The output item of this recipe
+     * @param ingredients Accumulator for found ingredients
      */
-    private void extractIngredient(Ingredient ingredient, Set<ResourceLocation> ingredients) {
+    private void extractIngredient(Ingredient ingredient, ResourceLocation outputId, Set<ResourceLocation> ingredients) {
         if (ingredient.isEmpty()) return;
 
         for (var stack : ingredient.getItems()) {
             ResourceLocation ingredientId = ForgeRegistries.ITEMS.getKey(stack.getItem());
-            if (ingredientId != null) {
+            if (ingredientId != null && !ingredientId.equals(outputId)) {
                 ingredients.add(ingredientId);
             }
         }
