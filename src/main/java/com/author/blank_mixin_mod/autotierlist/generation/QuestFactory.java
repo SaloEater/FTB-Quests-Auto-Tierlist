@@ -55,10 +55,10 @@ public class QuestFactory {
                 }
                 subtitle.append(value);
                 if (i < list.size() - 1) {
-                    subtitle.append("\n");
+                    subtitle.append("\\\\n");
                 }
             }
-            var subtitleCleared = subtitle.toString().replaceAll("\s&\s", " \\& ");
+            var subtitleCleared = subtitle.toString().replaceAll("& ", "\\\\& ");
             quest.setRawSubtitle(subtitleCleared);
         }
 

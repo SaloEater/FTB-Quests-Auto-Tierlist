@@ -19,9 +19,9 @@ public class BlankMixinMod
         var forgeBus = MinecraftForge.EVENT_BUS;
         forgeBus.register(this);
 
-        // Register Auto-Tierlist config
+        // Register Auto-Tierlist client config
         context.registerConfig(ModConfig.Type.CLIENT, AutoTierlistConfig.SPEC);
 
-        LOGGER.info("Auto-Tierlist module loaded");
+        LOGGER.info("Auto-Tierlist module loaded (client-side)");
     }
 }

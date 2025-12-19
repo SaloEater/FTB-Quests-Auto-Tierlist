@@ -44,6 +44,7 @@ public abstract class AbstractTierlistGenerator<T> {
         try {
             // 1. Create and configure item filter
             ItemFilter filter = new ItemFilter(AutoTierlistConfig.useAttributeDetection);
+            filter.loadSkippedItems(AutoTierlistConfig.SKIPPED_ITEMS.get());
             configureFilter(filter);
             LOGGER.info("Item filter configured: {}", filter.getStats());
 

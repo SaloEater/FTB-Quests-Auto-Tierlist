@@ -110,13 +110,22 @@ dependencies {
     annotationProcessor 'org.spongepowered:mixin:0.8.5:processor'
 
     // FTBQuests API for Auto-Tierlist
-    //implementation fg.deobf("curse.maven:ftbq-289412:7260736")
-    implementation "dev.ftb.mods:ftb-quests-forge:2001.4.17"
-    implementation "dev.ftb.mods:ftb-library-forge:2001.2.12"
+    implementation fg.deobf("dev.architectury:architectury-forge:9.2.14")
+
+    implementation fg.deobf("curse.maven:ftbq-289412:7260736")
+    implementation fg.deobf("curse.maven:ftbl-404465:7296748")
+    runtimeOnly fg.deobf("curse.maven:ftbt-404468:6130786")
+    //implementation "dev.ftb.mods:ftb-quests-forge:2001.4.17"
+    //implementation "dev.ftb.mods:ftb-library-forge:2001.2.12"
 
     compileOnly fg.deobf("dev.emi:emi-forge:1.1.22+1.20.1:api")
     runtimeOnly fg.deobf("dev.emi:emi-forge:1.1.22+1.20.1")
+    runtimeOnly fg.deobf("curse.maven:curiosapi-309927:6418456")
+    runtimeOnly fg.deobf("curse.maven:cael-308989:5281700")
+    implementation fg.deobf("curse.maven:gl-388172:7025129")
     implementation fg.deobf("curse.maven:tm-1084134:6054971")
+    implementation fg.deobf("curse.maven:ae-897127:7106759")
+    implementation fg.deobf("curse.maven:lt-1282036:7332696")
 
 //    implementation fg.deobf("curse.maven:ftbl-404465:7296748")
 //    runtimeOnly fg.deobf("curse.maven:ftbt-404468:6130786")

@@ -23,6 +23,7 @@ public class ItemFilter {
     private final Set<TagKey<Item>> armorTags = new HashSet<>();
     private final Set<ResourceLocation> weaponItems = new HashSet<>();
     private final Set<ResourceLocation> armorItems = new HashSet<>();
+    private final Set<ResourceLocation> skippedItems = new HashSet<>();
     private final boolean useAttributeDetection;
 
     public ItemFilter(boolean useAttributeDetection) {
@@ -108,6 +109,28 @@ public class ItemFilter {
     }
 
     /**
+     * Load items to skip from config.
+     * These items will be excluded from all tierlists.
+     */
+    public void loadSkippedItems(List<? extends String> itemStrings) {
+        skippedItems.clear();
+        for (String itemString : itemStrings) {
+            try {
+                ResourceLocation itemId = new ResourceLocation(itemString);
+                if (ForgeRegistries.ITEMS.containsKey(itemId)) {
+                    skippedItems.add(itemId);
+                    LOGGER.debug("Loaded skipped item: {}", itemString);
+                } else {
+                    LOGGER.warn("Item '{}' not found in registry", itemString);
+                }
+            } catch (Exception e) {
+                LOGGER.warn("Invalid skipped item '{}': {}", itemString, e.getMessage());
+            }
+        }
+        LOGGER.info("Loaded {} items to skip", skippedItems.size());
+    }
+
+    /**
      * Check if an item should be included in the weapon tierlist.
      *
      * @param itemId The item's resource location
@@ -116,6 +139,11 @@ public class ItemFilter {
      * @return True if the item should be included
      */
     public boolean isWeapon(ResourceLocation itemId, ItemStack stack, boolean hasAttackDamage) {
+        // Check if item is in skip list
+        if (skippedItems.contains(itemId)) {
+            return false;
+        }
+
         // Check manual item list
         if (weaponItems.contains(itemId)) {
             return true;
@@ -147,6 +175,11 @@ public class ItemFilter {
      * @return True if the item should be included
      */
     public boolean isArmor(ResourceLocation itemId, ItemStack stack, boolean hasArmorValue) {
+        // Check if item is in skip list
+        if (skippedItems.contains(itemId)) {
+            return false;
+        }
+
         // Check manual item list
         if (armorItems.contains(itemId)) {
             return true;
@@ -173,8 +206,8 @@ public class ItemFilter {
      * Get statistics about loaded filters.
      */
     public String getStats() {
-        return String.format("Weapon filters: %d tags, %d items | Armor filters: %d tags, %d items | Attribute detection: %s",
-            weaponTags.size(), weaponItems.size(), armorTags.size(), armorItems.size(),
+        return String.format("Weapon filters: %d tags, %d items | Armor filters: %d tags, %d items | Skipped items: %d | Attribute detection: %s",
+            weaponTags.size(), weaponItems.size(), armorTags.size(), armorItems.size(), skippedItems.size(),
             useAttributeDetection ? "enabled" : "disabled");
     }
 }

@@ -36,6 +36,7 @@ public class AutoTierlistConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ARMOR_ITEMS;
     public static final ForgeConfigSpec.BooleanValue USE_ATTRIBUTE_DETECTION;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_EMI_CATEGORIES;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_ITEMS;
 
     // Cached values for fast access
     public static boolean autoGenerateOnStart;
@@ -49,6 +50,7 @@ public class AutoTierlistConfig {
     public static double tierSpacingY;
     public static boolean useAttributeDetection;
     public static List<String> skippedEmiCategories;
+    public static List<String> skippedItems;
 
     static {
         BUILDER.comment("Auto-Tierlist Configuration").push("autotierlist");
@@ -78,15 +80,15 @@ public class AutoTierlistConfig {
 
         QUEST_SPACING_X = BUILDER
             .comment("Horizontal spacing between quests")
-            .defineInRange("questSpacingX", 1, 0.5, 5.0);
+            .defineInRange("questSpacingX", 1, 1, 5.0);
 
         QUEST_SPACING_Y = BUILDER
             .comment("Vertical spacing between quests")
-            .defineInRange("questSpacingY", 1, 0.5, 5.0);
+            .defineInRange("questSpacingY", 1, 1, 5.0);
 
         TIER_SPACING_Y = BUILDER
             .comment("Extra vertical spacing between tiers")
-            .defineInRange("tierSpacingY", 1, 0.0, 10.0);
+            .defineInRange("tierSpacingY", 1, 1, 10.0);
 
         // Override lists
         WEAPON_TIER_OVERRIDES = BUILDER
@@ -156,6 +158,15 @@ public class AutoTierlistConfig {
                                  () -> List.of("emi:anvil_repairing"),
                                  obj -> obj instanceof String);
 
+        SKIPPED_ITEMS = BUILDER
+            .comment("Items to completely skip during tierlist generation",
+                     "Format: \"modid:itemname\"",
+                     "Example: \"minecraft:wooden_sword\", \"create:copper_sword\"",
+                     "These items will be excluded from both weapon and armor tierlists")
+            .defineListAllowEmpty(List.of("skippedItems"),
+                                 () -> List.of(),
+                                 obj -> obj instanceof String);
+
         BUILDER.pop();
 
         tierMultiplier = 1.6;
@@ -189,6 +200,7 @@ public class AutoTierlistConfig {
         TIER_SPACING_Y.clearCache();
         USE_ATTRIBUTE_DETECTION.clearCache();
         SKIPPED_EMI_CATEGORIES.clearCache();
+        SKIPPED_ITEMS.clearCache();
         WEAPON_ITEMS.clearCache();
         ARMOR_ITEMS.clearCache();
         WEAPON_TAGS.clearCache();
@@ -206,5 +218,6 @@ public class AutoTierlistConfig {
         tierSpacingY = TIER_SPACING_Y.get();
         useAttributeDetection = USE_ATTRIBUTE_DETECTION.get();
         skippedEmiCategories = List.copyOf(SKIPPED_EMI_CATEGORIES.get());
+        skippedItems = List.copyOf(SKIPPED_ITEMS.get());
     }
 }

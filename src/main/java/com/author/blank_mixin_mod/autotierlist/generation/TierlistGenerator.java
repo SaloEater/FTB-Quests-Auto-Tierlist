@@ -3,6 +3,7 @@ package com.author.blank_mixin_mod.autotierlist.generation;
 import com.author.blank_mixin_mod.autotierlist.config.AutoTierlistConfig;
 import com.author.blank_mixin_mod.autotierlist.config.TierOverrideManager;
 import com.mojang.logging.LogUtils;
+import dev.ftb.mods.ftbquests.client.ClientQuestFile;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
 import net.minecraft.server.MinecraftServer;
@@ -125,6 +126,7 @@ public class TierlistGenerator {
                 chapter.deleteSelf();
 
                 LOGGER.info("Successfully removed chapter: {}", filename);
+                ClientQuestFile.INSTANCE.deleteObject(chapter.id);
             } catch (Exception e) {
                 LOGGER.error("Failed to remove chapter {}: {}", chapter.getFilename(), e.getMessage(), e);
             }
