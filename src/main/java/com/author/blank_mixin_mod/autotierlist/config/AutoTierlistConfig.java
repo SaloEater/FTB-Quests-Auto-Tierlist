@@ -179,6 +179,23 @@ public class AutoTierlistConfig {
      * Called automatically on config load/reload, or can be called manually.
      */
     public static void refreshCachedValues() {
+        AUTO_GENERATE_ON_START.clearCache();
+        ENABLE_WEAPON_TIERLIST.clearCache();
+        ENABLE_ARMOR_TIERLIST.clearCache();
+        ENABLE_PROGRESSION_ALIGNMENT.clearCache();
+//        ROWS_PER_TIER.clearCache();
+        QUEST_SPACING_X.clearCache();
+        QUEST_SPACING_Y.clearCache();
+        TIER_SPACING_Y.clearCache();
+        USE_ATTRIBUTE_DETECTION.clearCache();
+        SKIPPED_EMI_CATEGORIES.clearCache();
+        WEAPON_ITEMS.clearCache();
+        ARMOR_ITEMS.clearCache();
+        WEAPON_TAGS.clearCache();
+        ARMOR_TAGS.clearCache();
+        WEAPON_TIER_OVERRIDES.clearCache();
+        ARMOR_TIER_OVERRIDES.clearCache();
+
         autoGenerateOnStart = AUTO_GENERATE_ON_START.get();
         enableWeaponTierlist = ENABLE_WEAPON_TIERLIST.get();
         enableArmorTierlist = ENABLE_ARMOR_TIERLIST.get();
