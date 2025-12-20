@@ -1,36 +1,6 @@
 {
   "tags": [
     {
-      "tags": "forge:bloody_tools, forge:bloody_armor, forge:bloody_blocks",
-      "label": "B",
-      "color": "4"
-    },
-    {
-      "tags": "forge:diamond_tools, forge:diamond_armor, forge:diamond_blocks",
-      "label": "D",
-      "color": "b"
-    },
-    {
-      "tags": "forge:elvenite_tools, forge:elvenite_armor, forge:elvenite_blocks",
-      "label": "E",
-      "color": "e"
-    },
-    {
-      "tags": "forge:emerald_tools, forge:emerald_armor, forge:emerald_blocks",
-      "label": "E",
-      "color": "a"
-    },
-    {
-      "tags": "forge:helionite_tools, forge:helionite_armor, forge:helionite_blocks",
-      "label": "H",
-      "color": "6"
-    },
-    {
-      "tags": "forge:voiderite_tools, forge:voiderite_armor, forge:voiderite_blocks",
-      "label": "V",
-      "color": "5"
-    },
-    {
       "tags": "forge:iron_tools, forge:iron_armor, forge:iron_blocks",
       "label": "I",
       "color": "f"
@@ -41,9 +11,39 @@
       "color": "6"
     },
     {
+      "tags": "forge:emerald_tools, forge:emerald_armor, forge:emerald_blocks",
+      "label": "E",
+      "color": "a"
+    },
+    {
+      "tags": "forge:diamond_tools, forge:diamond_armor, forge:diamond_blocks",
+      "label": "D",
+      "color": "b"
+    },
+    {
       "tags": "forge:netherite_tools, forge:netherite_armor, forge:netherite_blocks",
       "label": "N",
       "color": "8"
+    },
+    {
+      "tags": "forge:elvenite_tools, forge:elvenite_armor, forge:elvenite_blocks",
+      "label": "E",
+      "color": "e"
+    },
+    {
+      "tags": "forge:voiderite_tools, forge:voiderite_armor, forge:voiderite_blocks",
+      "label": "V",
+      "color": "5"
+    },
+    {
+      "tags": "forge:bloody_tools, forge:bloody_armor, forge:bloody_blocks",
+      "label": "B",
+      "color": "4"
+    },
+    {
+      "tags": "forge:helionite_tools, forge:helionite_armor, forge:helionite_blocks",
+      "label": "H",
+      "color": "6"
     }
   ]
 }

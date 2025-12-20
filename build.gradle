@@ -122,6 +122,7 @@ dependencies {
 
     compileOnly fg.deobf("dev.emi:emi-forge:1.1.22+1.20.1:api")
     runtimeOnly fg.deobf("dev.emi:emi-forge:1.1.22+1.20.1")
+    runtimeOnly fg.deobf("curse.maven:ebmobs-921600:6095880")
     runtimeOnly fg.deobf("curse.maven:curiosapi-309927:6418456")
     runtimeOnly fg.deobf("curse.maven:cael-308989:5281700")
     runtimeOnly fg.deobf("curse.maven:gl-388172:7025129")
@@ -129,6 +130,8 @@ dependencies {
     runtimeOnly fg.deobf("curse.maven:ae-897127:7106759")
     runtimeOnly fg.deobf("curse.maven:lt-1282036:7332696")
     runtimeOnly fg.deobf("curse.maven:attribute-fix-280510:4911084")
+
+    implementation fg.deobf("curse.maven:al-1282036:7332696")
 
 //    implementation fg.deobf("curse.maven:ftbl-404465:7296748")
 //    runtimeOnly fg.deobf("curse.maven:ftbt-404468:6130786")

@@ -1,7 +1,6 @@
 package com.author.blank_mixin_mod.autotierlist.generation;
 
 import com.author.blank_mixin_mod.autotierlist.config.AutoTierlistConfig;
-import com.author.blank_mixin_mod.autotierlist.mixin.QuestAccessor;
 import com.github.elenterius.biomancy.tooltip.EmptyLineTooltipComponent;
 import com.mojang.logging.LogUtils;
 import dev.ftb.mods.ftbquests.quest.Chapter;
@@ -75,7 +74,7 @@ public class QuestFactory {
             }
         }
 
-        List<AutoTierlistConfig.TagEntry> tagEntries = AutoTierlistConfig.getTagEntries();
+        List<AutoTierlistConfig.TagEntry> tagEntries = AutoTierlistConfig.getArmageddonTagEntries();
         for (AutoTierlistConfig.TagEntry entry : tagEntries) {
             for (var tagKey : entry.getTagKeys()) {
                 if (item.is(tagKey)) {

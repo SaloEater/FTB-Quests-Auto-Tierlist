@@ -50,7 +50,7 @@ public class AutoTierlistConfig {
     public static final ForgeConfigSpec.BooleanValue USE_ATTRIBUTE_DETECTION;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_EMI_CATEGORIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_ITEMS;
-    public static final ForgeConfigSpec.ConfigValue<List<? extends List<String>>> TAGS;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends List<String>>> ARMAGEDDON_TAGS;
 
     // Cached values for fast access
     public static boolean autoGenerateOnStart;
@@ -204,7 +204,7 @@ public class AutoTierlistConfig {
             LOGGER.error("Failed to load defaults from armageddontags_tierlist.json", e);
         }
 
-        TAGS = BUILDER
+        ARMAGEDDON_TAGS = BUILDER
                 .comment("List of tag entries. Format: [tags, label letter, color]",
                         "Tags can be comma-separated for multiple tags",
                         "Example: [\"forge:diamond_tools,minecraft:swords\", \"D\", \"c\"]")
@@ -232,10 +232,10 @@ public class AutoTierlistConfig {
         refreshCachedValues();
     }
 
-    public static List<TagEntry> getTagEntries() {
+    public static List<TagEntry> getArmageddonTagEntries() {
         List<TagEntry> entries = new ArrayList<>();
 
-        for (List<String> entry : TAGS.get()) {
+        for (List<String> entry : ARMAGEDDON_TAGS.get()) {
             if (entry.size() >= 3) {
                 entries.add(new TagEntry(entry.get(0), entry.get(1).charAt(0), entry.get(2).charAt(0)));
             }
