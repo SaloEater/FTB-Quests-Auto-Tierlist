@@ -53,13 +53,14 @@ public class QuestFactory {
                 if (value.isEmpty()) {
                     continue;
                 }
-                subtitle.append(value);
+                // Escape ampersands that aren't already part of formatting codes (&[0-9A-FK-OR])
+                String escaped = value.replaceAll("&(?![0-9A-Fa-fK-Ok-oRr])", "\\\\&");
+                subtitle.append(escaped);
                 if (i < list.size() - 1) {
-                    subtitle.append("\\\\n");
+                    subtitle.append("\n");
                 }
             }
-            var subtitleCleared = subtitle.toString().replaceAll("& ", "\\\\& ");
-            quest.setRawSubtitle(subtitleCleared);
+            quest.setRawSubtitle(subtitle.toString());
         }
 
         // Register quest
