@@ -1,6 +1,9 @@
 package com.author.blank_mixin_mod.autotierlist.generation;
 
+import com.author.blank_mixin_mod.autotierlist.config.AutoTierlistConfig;
 import com.author.blank_mixin_mod.autotierlist.mixin.QuestAccessor;
+import com.github.elenterius.biomancy.tooltip.EmptyLineTooltipComponent;
+import com.mojang.logging.LogUtils;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
@@ -8,10 +11,13 @@ import dev.ftb.mods.ftbquests.quest.task.CheckmarkTask;
 import dev.ftb.mods.ftbquests.quest.task.ItemTask;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentContents;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 
 import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Utility class for creating FTBQuests objects.
@@ -47,26 +53,50 @@ public class QuestFactory {
         var list = new ArrayList<Component>();
         item.getItem().appendHoverText(item, null, list, TooltipFlag.NORMAL);
         if (!list.isEmpty()) {
-            StringBuilder subtitle = new StringBuilder();
+            MutableComponent subtitle = null;
             for (int i = 0; i < list.size(); i++) {
-                String value = list.get(i).getString();
-                if (value.isEmpty()) {
+                Component component = list.get(i);
+                if (!isValidComponent(component)) {
                     continue;
                 }
-                // Escape ampersands that aren't already part of formatting codes (&[0-9A-FK-OR])
-                String escaped = value.replaceAll("&(?![0-9A-Fa-fK-Ok-oRr])", "\\\\&");
-                subtitle.append(escaped);
+                if (subtitle == null) {
+                    subtitle = (MutableComponent) component;
+                } else {
+                    subtitle = subtitle.append(component);
+                }
                 if (i < list.size() - 1) {
-                    subtitle.append("\n");
+                    subtitle = subtitle.append(Component.literal("\n"));
                 }
             }
-            quest.setRawSubtitle(subtitle.toString());
+            try {
+                quest.setRawSubtitle(Component.Serializer.toJson(subtitle));
+            } catch (Exception e) {
+                LogUtils.getLogger().error("Failed to set subtitle for item {}: {}", item.toString(), e.getMessage());
+            }
         }
+
+        List<AutoTierlistConfig.TagEntry> tagEntries = AutoTierlistConfig.getTagEntries();
+        for (AutoTierlistConfig.TagEntry entry : tagEntries) {
+            for (var tagKey : entry.getTagKeys()) {
+                if (item.is(tagKey)) {
+                    var tier = Component.literal("[").withStyle(ChatFormatting.GRAY)
+                            .append(Component.literal(String.valueOf(entry.getLabel())).withStyle(ChatFormatting.getByCode(entry.getColor())))
+                            .append(Component.literal("] ").withStyle(ChatFormatting.GRAY))
+                            .append(item.getHoverName());
+                    quest.setRawTitle(Component.Serializer.toJson(tier));
+                }
+            }
+        }
+
 
         // Register quest
         quest.onCreated();
 
         return quest;
+    }
+
+    private static boolean isValidComponent(Component component) {
+        return component.getContents() != ComponentContents.EMPTY && !(component instanceof EmptyLineTooltipComponent) && !(component.getContents() instanceof EmptyLineTooltipComponent);
     }
 
     /**

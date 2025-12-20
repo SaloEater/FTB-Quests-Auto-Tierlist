@@ -117,15 +117,18 @@ dependencies {
     runtimeOnly fg.deobf("curse.maven:ftbt-404468:6130786")
     //implementation "dev.ftb.mods:ftb-quests-forge:2001.4.17"
     //implementation "dev.ftb.mods:ftb-library-forge:2001.2.12"
+    implementation fg.deobf("curse.maven:armageddon-1110642:7142556")
+    implementation fg.deobf("curse.maven:biomancy-492939:5886758")
 
     compileOnly fg.deobf("dev.emi:emi-forge:1.1.22+1.20.1:api")
     runtimeOnly fg.deobf("dev.emi:emi-forge:1.1.22+1.20.1")
     runtimeOnly fg.deobf("curse.maven:curiosapi-309927:6418456")
     runtimeOnly fg.deobf("curse.maven:cael-308989:5281700")
-    implementation fg.deobf("curse.maven:gl-388172:7025129")
-    implementation fg.deobf("curse.maven:tm-1084134:6054971")
-    implementation fg.deobf("curse.maven:ae-897127:7106759")
-    implementation fg.deobf("curse.maven:lt-1282036:7332696")
+    runtimeOnly fg.deobf("curse.maven:gl-388172:7025129")
+    runtimeOnly fg.deobf("curse.maven:tm-1084134:6054971")
+    runtimeOnly fg.deobf("curse.maven:ae-897127:7106759")
+    runtimeOnly fg.deobf("curse.maven:lt-1282036:7332696")
+    runtimeOnly fg.deobf("curse.maven:attribute-fix-280510:4911084")
 
 //    implementation fg.deobf("curse.maven:ftbl-404465:7296748")
 //    runtimeOnly fg.deobf("curse.maven:ftbt-404468:6130786")

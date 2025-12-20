@@ -255,8 +255,49 @@ public class ProgressionHelper {
                 assignedColumn = nextColumn++;
             }
 
+            // Ensure dependent is never to the left of any dependency
+            if (!depsInChain.isEmpty()) {
+                int maxDependencyColumn = depsInChain.stream()
+                    .mapToInt(dep -> columnAssignments.get(dep))
+                    .max()
+                    .orElse(-1);
+
+                if (assignedColumn < maxDependencyColumn) {
+                    // Find next available column at or right of the rightmost dependency
+                    int itemTier = tierMap.getOrDefault(item, 0);
+                    assignedColumn = maxDependencyColumn;
+
+                    // Check if this column is occupied in the same tier
+                    while (isColumnOccupiedInTier(assignedColumn, itemTier, columnAssignments, tierMap, assigned)) {
+                        assignedColumn++;
+                    }
+
+                    // Update nextColumn if we went beyond it
+                    if (assignedColumn >= nextColumn) {
+                        nextColumn = assignedColumn + 1;
+                    }
+                }
+            }
+
             columnAssignments.put(item, assignedColumn);
             assigned.add(item);
         }
+    }
+
+    /**
+     * Check if a column is already occupied by another item in the same tier.
+     */
+    private static boolean isColumnOccupiedInTier(int column, int tier,
+                                                   Map<ResourceLocation, Integer> columnAssignments,
+                                                   Map<ResourceLocation, Integer> tierMap,
+                                                   Set<ResourceLocation> assigned) {
+        for (Map.Entry<ResourceLocation, Integer> entry : columnAssignments.entrySet()) {
+            if (entry.getValue() == column &&
+                tierMap.getOrDefault(entry.getKey(), 0) == tier &&
+                assigned.contains(entry.getKey())) {
+                return true;
+            }
+        }
+        return false;
     }
 }

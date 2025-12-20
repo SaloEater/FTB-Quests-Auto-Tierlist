@@ -1,14 +1,27 @@
 package com.author.blank_mixin_mod.autotierlist.config;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.mojang.logging.LogUtils;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.TagKey;
+import net.minecraft.world.item.Item;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import org.slf4j.Logger;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 @Mod.EventBusSubscriber(modid = "blank_mixin_mod", bus = Mod.EventBusSubscriber.Bus.MOD)
 public class AutoTierlistConfig {
+    private static final Logger LOGGER = LogUtils.getLogger();
+
     private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
 
     // Generation settings
@@ -37,6 +50,7 @@ public class AutoTierlistConfig {
     public static final ForgeConfigSpec.BooleanValue USE_ATTRIBUTE_DETECTION;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_EMI_CATEGORIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_ITEMS;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends List<String>>> TAGS;
 
     // Cached values for fast access
     public static boolean autoGenerateOnStart;
@@ -167,6 +181,39 @@ public class AutoTierlistConfig {
                                  () -> List.of(),
                                  obj -> obj instanceof String);
 
+        // Load defaults from JSON
+        List<List<String>> defaultTags = new ArrayList<>();
+
+        try {
+            InputStream stream = AutoTierlistConfig.class.getClassLoader().getResourceAsStream("armageddontags_tierlist.json");
+            if (stream != null) {
+                JsonObject root = JsonParser.parseReader(new InputStreamReader(stream)).getAsJsonObject();
+                if (root.has("tags")) {
+                    root.getAsJsonArray("tags").forEach(element -> {
+                        JsonObject tagObj = element.getAsJsonObject();
+                        String tag = tagObj.get("tags").getAsString();
+                        String label = tagObj.get("label").getAsString();
+                        String color = tagObj.get("color").getAsString();
+
+                        defaultTags.add(Arrays.asList(tag, label, color));
+                    });
+                }
+                LOGGER.info("Loaded {} default tag entries from armageddontags_tierlist.json", defaultTags.size());
+            }
+        } catch (Exception e) {
+            LOGGER.error("Failed to load defaults from armageddontags_tierlist.json", e);
+        }
+
+        TAGS = BUILDER
+                .comment("List of tag entries. Format: [tags, label letter, color]",
+                        "Tags can be comma-separated for multiple tags",
+                        "Example: [\"forge:diamond_tools,minecraft:swords\", \"D\", \"c\"]")
+                .defineList("tags", defaultTags, obj -> {
+                    if (!(obj instanceof List)) return false;
+                    List<?> list = (List<?>) obj;
+                    return list.size() == 4 && list.stream().allMatch(item -> item instanceof String);
+                });
+
         BUILDER.pop();
 
         tierMultiplier = 1.6;
@@ -183,6 +230,72 @@ public class AutoTierlistConfig {
     @SubscribeEvent
     public static void onReload(final ModConfigEvent.Reloading event) {
         refreshCachedValues();
+    }
+
+    public static List<TagEntry> getTagEntries() {
+        List<TagEntry> entries = new ArrayList<>();
+
+        for (List<String> entry : TAGS.get()) {
+            if (entry.size() >= 3) {
+                entries.add(new TagEntry(entry.get(0), entry.get(1).charAt(0), entry.get(2).charAt(0)));
+            }
+        }
+
+        return entries;
+    }
+
+    public static class TagEntry {
+        private final String tagLine;
+        private final List<String> tags;
+        private final char label;
+        private final char color;
+
+        public TagEntry(String tag, char label, char color) {
+            this.tagLine = tag;
+            this.label = label;
+            this.color = color;
+
+            // Parse comma-separated tags
+            this.tags = new ArrayList<>();
+            for (String t : tag.split(",")) {
+                String trimmed = t.trim();
+                if (!trimmed.isEmpty()) {
+                    this.tags.add(trimmed);
+                }
+            }
+        }
+
+        public String getTagLine() {
+            return tagLine;
+        }
+
+        public List<String> getTags() {
+            return tags;
+        }
+
+        public List<ResourceLocation> getTagLocations() {
+            List<ResourceLocation> locations = new ArrayList<>();
+            for (String t : tags) {
+                locations.add(new ResourceLocation(t));
+            }
+            return locations;
+        }
+
+        public char getLabel() {
+            return label;
+        }
+
+        public char getColor() {
+            return color;
+        }
+
+        public List<TagKey<Item>> getTagKeys() {
+            List<TagKey<Item>> tagKeys = new ArrayList<>();
+            for (String t : tags) {
+                tagKeys.add(TagKey.create(net.minecraft.core.registries.Registries.ITEM, new ResourceLocation(t)));
+            }
+            return tagKeys;
+        }
     }
 
     /**
