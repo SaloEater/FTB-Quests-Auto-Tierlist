@@ -18,9 +18,6 @@ import java.util.List;
 public class TierlistGenerator {
     private static final Logger LOGGER = LogUtils.getLogger();
 
-    private static final String WEAPON_CHAPTER_ID = "autotierlist_weapons";
-    private static final String ARMOR_CHAPTER_ID = "autotierlist_armor";
-
     /**
      * Generate all tierlists (weapons and armor).
      *
@@ -102,10 +99,13 @@ public class TierlistGenerator {
     private void cleanupExistingChapters(ServerQuestFile questFile) {
         List<Chapter> chaptersToRemove = new ArrayList<>();
 
+        String weaponChapterId = AutoTierlistConfig.WEAPON_CHAPTER_ID.get();
+        String armorChapterId = AutoTierlistConfig.ARMOR_CHAPTER_ID.get();
+
         // Find existing tierlist chapters
         for (Chapter chapter : questFile.getAllChapters()) {
             String filename = chapter.getFilename();
-            if (WEAPON_CHAPTER_ID.equals(filename) || ARMOR_CHAPTER_ID.equals(filename)) {
+            if (weaponChapterId.equals(filename) || armorChapterId.equals(filename)) {
                 chaptersToRemove.add(chapter);
                 LOGGER.info("Found existing tierlist chapter to remove: {} (ID: {})", filename, chapter.id);
             }

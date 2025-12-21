@@ -1,4 +1,6 @@
 {
+  "blank_mixin_mod.chapter.weapons.title": "Weapon Tierlist",
+  "blank_mixin_mod.chapter.armor.title": "Armor Tierlist",
   "blank_mixin_mod.command.autotierlist.invalid_mode": "Invalid mode specified.",
   "blank_mixin_mod.command.autotierlist.no_player": "§c[Auto-Tierlist] No player found",
   "blank_mixin_mod.command.autotierlist.singleplayer_only": "§c[Auto-Tierlist] This command only works in single-player worlds",
@@ -21,5 +23,7 @@
   "blank_mixin_mod.command.autotierlist.help.clear": "§e/autotierlist clear §7- Remove generated tierlist chapters",
   "blank_mixin_mod.command.autotierlist.help.dump": "§e/autotierlist dump_excluded_weapons §7- Export excluded weapons to file",
   "blank_mixin_mod.command.autotierlist.help.config": "§7Config: §fconfig/blank_mixin_mod-client.toml",
-  "blank_mixin_mod.command.autotierlist.help.note": "§c§oNote: These commands only work in single-player worlds"
+  "blank_mixin_mod.command.autotierlist.help.note": "§c§oNote: These commands only work in single-player worlds",
+  "blank_mixin_mod.chapter.weapons.title": "Weapon Tierlist",
+  "blank_mixin_mod.chapter.armor.title": "Armor Tierlist"
 }

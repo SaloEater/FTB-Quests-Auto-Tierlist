@@ -303,22 +303,27 @@ public abstract class AbstractTierlistGenerator<T> {
             AutoTierlistConfig.TagEntry tagEntry = group.getTagEntry();
             if (tagEntry == null || !tagEntry.hasHeader()) continue;
 
-            // Find the first column used by this group
-            Integer firstColumn = null;
+            // Find the min and max columns used by this group
+            Integer minColumn = null;
+            Integer maxColumn = null;
             for (T item : group.getItems()) {
                 ResourceLocation itemId = getItemId(item);
                 Integer column = columnAssignments.get(itemId);
                 if (column != null) {
-                    if (firstColumn == null || column < firstColumn) {
-                        firstColumn = column;
+                    if (minColumn == null || column < minColumn) {
+                        minColumn = column;
+                    }
+                    if (maxColumn == null || column > maxColumn) {
+                        maxColumn = column;
                     }
                 }
             }
 
-            if (firstColumn == null) continue;
+            if (minColumn == null || maxColumn == null) continue;
 
-            // Calculate X position for the header
-            double headerX = firstColumn * AutoTierlistConfig.QUEST_SPACING_X.get();
+            // Calculate center X position of the group
+            double centerColumn = (minColumn + maxColumn) / 2.0;
+            double headerX = centerColumn * AutoTierlistConfig.QUEST_SPACING_X.get();
 
             // Create header quest with 3x3 size
             ResourceLocation headerItemId = new ResourceLocation(tagEntry.getHeaderItem());
@@ -331,8 +336,8 @@ public abstract class AbstractTierlistGenerator<T> {
                 headerY
             );
 
-            LOGGER.info("Created header quest for tag group '{}' at ({}, {})",
-                tagEntry.getLabel(), headerX, headerY);
+            LOGGER.info("Created header quest for tag group '{}' at ({}, {}) (columns {}-{})",
+                tagEntry.getLabel(), headerX, headerY, minColumn, maxColumn);
         }
     }
 

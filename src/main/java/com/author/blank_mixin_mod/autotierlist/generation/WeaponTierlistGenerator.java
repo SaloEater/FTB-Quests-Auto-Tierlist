@@ -6,6 +6,7 @@ import com.author.blank_mixin_mod.autotierlist.analysis.TierCalculator;
 import com.author.blank_mixin_mod.autotierlist.config.AutoTierlistConfig;
 import com.author.blank_mixin_mod.autotierlist.config.ItemFilter;
 import com.author.blank_mixin_mod.autotierlist.config.TierOverrideManager;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
@@ -23,12 +24,12 @@ public class WeaponTierlistGenerator extends AbstractTierlistGenerator<ItemData.
 
     @Override
     protected String getChapterId() {
-        return "autotierlist_weapons";
+        return AutoTierlistConfig.WEAPON_CHAPTER_ID.get();
     }
 
     @Override
     protected String getChapterTitle() {
-        return "Weapon Tierlist";
+        return Component.Serializer.toJson(Component.translatable(AutoTierlistConfig.WEAPON_CHAPTER_TITLE.get()));
     }
 
     @Override

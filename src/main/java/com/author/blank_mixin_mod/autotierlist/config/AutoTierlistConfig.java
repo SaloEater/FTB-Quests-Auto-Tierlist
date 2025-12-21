@@ -27,6 +27,12 @@ public class AutoTierlistConfig {
     public static final ForgeConfigSpec.BooleanValue ENABLE_WEAPON_TIERLIST;
     public static final ForgeConfigSpec.BooleanValue ENABLE_ARMOR_TIERLIST;
 
+    // Chapter settings
+    public static final ForgeConfigSpec.ConfigValue<String> WEAPON_CHAPTER_ID;
+    public static final ForgeConfigSpec.ConfigValue<String> ARMOR_CHAPTER_ID;
+    public static final ForgeConfigSpec.ConfigValue<String> WEAPON_CHAPTER_TITLE;
+    public static final ForgeConfigSpec.ConfigValue<String> ARMOR_CHAPTER_TITLE;
+
     // Layout settings
     //public static final ForgeConfigSpec.IntValue ROWS_PER_TIER;
     public static final ForgeConfigSpec.DoubleValue QUEST_SPACING_X;
@@ -57,7 +63,7 @@ public class AutoTierlistConfig {
         // Generation settings
         AUTO_GENERATE_ON_START = BUILDER
             .comment("Automatically generate tierlists when the server starts")
-            .define("autoGenerateOnStart", true);
+            .define("autoGenerateOnStart", false);
 
         ENABLE_WEAPON_TIERLIST = BUILDER
             .comment("Enable weapon tierlist generation")
@@ -66,6 +72,23 @@ public class AutoTierlistConfig {
         ENABLE_ARMOR_TIERLIST = BUILDER
             .comment("Enable armor tierlist generation")
             .define("enableArmorTierlist", true);
+
+        // Chapter settings
+        WEAPON_CHAPTER_ID = BUILDER
+            .comment("Chapter ID for weapon tierlist")
+            .define("weaponChapterId", "autotierlist_weapons");
+
+        ARMOR_CHAPTER_ID = BUILDER
+            .comment("Chapter ID for armor tierlist")
+            .define("armorChapterId", "autotierlist_armor");
+
+        WEAPON_CHAPTER_TITLE = BUILDER
+            .comment("Translatable title key for weapon chapter")
+            .define("weaponChapterTitle", "blank_mixin_mod.chapter.weapons.title");
+
+        ARMOR_CHAPTER_TITLE = BUILDER
+            .comment("Translatable title key for armor chapter")
+            .define("armorChapterTitle", "blank_mixin_mod.chapter.armor.title");
 
         // Layout settings
         /*ROWS_PER_TIER = BUILDER

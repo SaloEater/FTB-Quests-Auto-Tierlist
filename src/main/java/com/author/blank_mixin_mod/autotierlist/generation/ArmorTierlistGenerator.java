@@ -6,6 +6,7 @@ import com.author.blank_mixin_mod.autotierlist.analysis.TierCalculator;
 import com.author.blank_mixin_mod.autotierlist.config.AutoTierlistConfig;
 import com.author.blank_mixin_mod.autotierlist.config.ItemFilter;
 import com.author.blank_mixin_mod.autotierlist.config.TierOverrideManager;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
@@ -23,12 +24,12 @@ public class ArmorTierlistGenerator extends AbstractTierlistGenerator<ItemData.A
 
     @Override
     protected String getChapterId() {
-        return "autotierlist_armor";
+        return AutoTierlistConfig.ARMOR_CHAPTER_ID.get();
     }
 
     @Override
     protected String getChapterTitle() {
-        return "Armor Tierlist";
+        return Component.Serializer.toJson(Component.translatable(AutoTierlistConfig.ARMOR_CHAPTER_TITLE.get()));
     }
 
     @Override
