@@ -112,16 +112,17 @@ public class GroupLayoutCalculator<T> {
 
     /**
      * Assign sequential columns for tag groups and isolated items.
-     * Items are sorted by tier (ascending), then by score (ascending - weaker first).
+     * Items are sorted by tier (ascending), then by mod ID, then by score (ascending - weaker first).
      */
     private void assignSequentialColumns(ItemGroup<T> group,
                                         Map<ResourceLocation, Integer> tierMap,
                                         int startColumn) {
 
-        // Sort items by tier, then by score (weaker first)
+        // Sort items by tier, then by mod ID (namespace), then by score (weaker first)
         List<T> sortedItems = new ArrayList<>(group.getItems());
         sortedItems.sort(Comparator
             .comparing((T item) -> tierMap.getOrDefault(getItemId.apply(item), Integer.MAX_VALUE))
+            .thenComparing((T item) -> getItemId.apply(item).getNamespace())
             .thenComparing(getItemScore));
 
         // Group items by tier to assign columns within each tier
@@ -148,25 +149,5 @@ public class GroupLayoutCalculator<T> {
                 group.setColumnAssignment(itemId, column);
             }
         }
-    }
-
-    /**
-     * Get the total width (number of columns) occupied by all groups including spacing.
-     */
-    public static int getTotalWidth(List<ItemGroup<?>> groups) {
-        if (groups.isEmpty()) return 0;
-
-        int maxColumn = -1;
-
-        for (ItemGroup<?> group : groups) {
-            int groupMax = group.getColumnAssignments().values().stream()
-                .mapToInt(Integer::intValue)
-                .max()
-                .orElse(-1);
-
-            maxColumn = Math.max(maxColumn, groupMax);
-        }
-
-        return maxColumn + 1;
     }
 }

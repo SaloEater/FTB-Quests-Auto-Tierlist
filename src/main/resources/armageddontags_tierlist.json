@@ -3,47 +3,65 @@
     {
       "tags": "forge:iron_tools, forge:iron_armor, forge:iron_blocks",
       "label": "I",
-      "color": "f"
+      "color": "f",
+      "header_item": "minecraft:iron_ingot",
+      "header_title": "advancements.the_iron_keeper.descr"
     },
     {
       "tags": "forge:golden_tools, forge:golden_armor, forge:golden_blocks",
       "label": "G",
-      "color": "6"
+      "color": "6",
+      "header_item": "minecraft:gold_ingot",
+      "header_title": "advancements.the_gold_keeper.descr"
     },
     {
       "tags": "forge:emerald_tools, forge:emerald_armor, forge:emerald_blocks",
       "label": "E",
-      "color": "a"
+      "color": "a",
+      "header_item": "minecraft:emerald",
+      "header_title": "advancements.the_emerald_keeper.descr"
     },
     {
       "tags": "forge:diamond_tools, forge:diamond_armor, forge:diamond_blocks",
       "label": "D",
-      "color": "b"
+      "color": "b",
+      "header_item": "minecraft:diamond",
+      "header_title": "advancements.the_diamond_keeper.descr"
     },
     {
       "tags": "forge:netherite_tools, forge:netherite_armor, forge:netherite_blocks",
       "label": "N",
-      "color": "8"
+      "color": "8",
+      "header_item": "minecraft:netherite_ingot",
+      "header_title": "advancements.the_netherite_keeper.descr"
     },
     {
       "tags": "forge:elvenite_tools, forge:elvenite_armor, forge:elvenite_blocks",
       "label": "E",
-      "color": "e"
+      "color": "e",
+      "header_item": "armageddon_mod:elvenite_ingot",
+      "header_title": "advancements.the_elvenite_keeper.descr"
     },
     {
       "tags": "forge:voiderite_tools, forge:voiderite_armor, forge:voiderite_blocks",
       "label": "V",
-      "color": "5"
+      "color": "5",
+      "header_item": "armageddon_mod:voiderite",
+      "header_title": "advancements.the_voiderite_keeper.descr"
     },
     {
       "tags": "forge:bloody_tools, forge:bloody_armor, forge:bloody_blocks",
       "label": "B",
-      "color": "4"
+      "color": "4",
+      "header_item": "armageddon_mod:bloody_ingot",
+      "header_title": "advancements.the_blood_keeper.descr"
     },
     {
       "tags": "forge:helionite_tools, forge:helionite_armor, forge:helionite_blocks",
       "label": "H",
-      "color": "6"
+      "color": "6",
+      "header_item": "armageddon_mod:helionite_ingot",
+      "header_title": "advancements.the_sun_keeper.descr"
     }
   ]
 }

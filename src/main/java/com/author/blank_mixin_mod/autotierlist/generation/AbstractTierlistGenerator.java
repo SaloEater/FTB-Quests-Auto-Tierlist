@@ -142,6 +142,11 @@ public abstract class AbstractTierlistGenerator<T> {
                 generateTierQuests(questFile, chapter, tier, tierIndex, tiers.get(tier), columnAssignments);
             }
 
+            // 6.5. Create header quests for tag groups (non-progression mode only)
+            if (!enableProgressionAlignment) {
+                createTagGroupHeaders(questFile, chapter, groups, columnAssignments, tierMap);
+            }
+
             // 7. Create quest dependencies based on crafting relationships
             if (enableProgressionAlignment && !recipeGraph.isEmpty()) {
                 createQuestDependencies(recipeGraph);
@@ -280,6 +285,55 @@ public abstract class AbstractTierlistGenerator<T> {
             }
         }
         chapter.addImage(image);
+    }
+
+    /**
+     * Create header quests for tag groups above the global first row.
+     */
+    private void createTagGroupHeaders(ServerQuestFile questFile, Chapter chapter,
+                                      List<ItemGroup<T>> groups,
+                                      Map<ResourceLocation, Integer> columnAssignments,
+                                      Map<ResourceLocation, Integer> tierMap) {
+        // Position headers above the global first row (Y = 0)
+        double headerY = -4.0;
+
+        for (ItemGroup<T> group : groups) {
+            if (group.getType() != GroupType.TAG_GROUP) continue;
+
+            AutoTierlistConfig.TagEntry tagEntry = group.getTagEntry();
+            if (tagEntry == null || !tagEntry.hasHeader()) continue;
+
+            // Find the first column used by this group
+            Integer firstColumn = null;
+            for (T item : group.getItems()) {
+                ResourceLocation itemId = getItemId(item);
+                Integer column = columnAssignments.get(itemId);
+                if (column != null) {
+                    if (firstColumn == null || column < firstColumn) {
+                        firstColumn = column;
+                    }
+                }
+            }
+
+            if (firstColumn == null) continue;
+
+            // Calculate X position for the header
+            double headerX = firstColumn * AutoTierlistConfig.QUEST_SPACING_X.get();
+
+            // Create header quest with 3x3 size
+            ResourceLocation headerItemId = new ResourceLocation(tagEntry.getHeaderItem());
+            QuestFactory.createHeaderQuest(
+                questFile,
+                chapter,
+                headerItemId,
+                tagEntry.getHeaderTitle(),
+                headerX,
+                headerY
+            );
+
+            LOGGER.info("Created header quest for tag group '{}' at ({}, {})",
+                tagEntry.getLabel(), headerX, headerY);
+        }
     }
 
     /**

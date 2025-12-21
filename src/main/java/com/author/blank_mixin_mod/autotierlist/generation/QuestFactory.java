@@ -3,6 +3,8 @@ package com.author.blank_mixin_mod.autotierlist.generation;
 import com.author.blank_mixin_mod.autotierlist.config.AutoTierlistConfig;
 import com.github.elenterius.biomancy.tooltip.EmptyLineTooltipComponent;
 import com.mojang.logging.LogUtils;
+import dev.ftb.mods.ftblibrary.config.ConfigGroup;
+import dev.ftb.mods.ftblibrary.config.ConfigValue;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
@@ -12,6 +14,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentContents;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 
@@ -154,5 +157,59 @@ public class QuestFactory {
      */
     public static double calculateQuestY(double tierBaseY, int row, double questSpacingY) {
         return tierBaseY + row * questSpacingY;
+    }
+
+    /**
+     * Create a header quest for a tag group with a translatable title.
+     *
+     * @param questFile The quest file
+     * @param chapter The parent chapter
+     * @param itemId The item ID to use for the task
+     * @param titleKey The translatable title key
+     * @param x X coordinate
+     * @param y Y coordinate
+     * @return The created quest
+     */
+    public static Quest createHeaderQuest(ServerQuestFile questFile, Chapter chapter,
+                                          ResourceLocation itemId, String titleKey,
+                                          double x, double y) {
+        // Create quest
+        long questId = questFile.newID();
+        Quest quest = new Quest(questId, chapter);
+
+        // Set position
+        quest.setX(x);
+        quest.setY(y);
+
+        // Set translatable title
+        quest.setRawTitle("{\"translate\":\"" + titleKey + "\"}");
+
+        // Create item task (display only, not consumable)
+        net.minecraft.world.item.Item item = net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(itemId);
+        if (item != null) {
+            ItemStack stack = new ItemStack(item);
+            long taskId = questFile.newID();
+            ItemTask task = new ItemTask(taskId, quest);
+            task.setStackAndCount(stack, 1);
+            task.setConsumeItems(dev.ftb.mods.ftblibrary.config.Tristate.FALSE);
+            task.onCreated();
+        }
+
+        // Set quest size using ConfigGroup
+        ConfigGroup group = new ConfigGroup("");
+        quest.fillConfigGroup(group);
+
+        for (var value : group.getOrCreateSubgroup("appearance").getValues()) {
+            if (value.id.equals("size")) {
+                ConfigValue<Double> sizeVal = (ConfigValue<Double>) value;
+                sizeVal.setCurrentValue(3.0);
+                sizeVal.applyValue();
+            }
+        }
+
+        // Register quest
+        quest.onCreated();
+
+        return quest;
     }
 }

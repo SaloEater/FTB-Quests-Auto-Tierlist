@@ -174,8 +174,10 @@ public class AutoTierlistConfig {
                         String tag = tagObj.get("tags").getAsString();
                         String label = tagObj.get("label").getAsString();
                         String color = tagObj.get("color").getAsString();
+                        String headerItem = tagObj.has("header_item") ? tagObj.get("header_item").getAsString() : "";
+                        String headerTitle = tagObj.has("header_title") ? tagObj.get("header_title").getAsString() : "";
 
-                        defaultTags.add(Arrays.asList(tag, label, color));
+                        defaultTags.add(Arrays.asList(tag, label, color, headerItem, headerTitle));
                     });
                 }
                 LOGGER.info("Loaded {} default tag entries from armageddontags_tierlist.json", defaultTags.size());
@@ -185,13 +187,15 @@ public class AutoTierlistConfig {
         }
 
         ARMAGEDDON_TAGS = BUILDER
-                .comment("List of tag entries. Format: [tags, label letter, color]",
+                .comment("List of tag entries. Format: [tags, label letter, color, header_item, header_title]",
                         "Tags can be comma-separated for multiple tags",
-                        "Example: [\"forge:diamond_tools,minecraft:swords\", \"D\", \"c\"]")
+                        "header_item: Item ID to use for header quest (optional, empty string to skip)",
+                        "header_title: Translatable key for header quest title (optional, empty string to skip)",
+                        "Example: [\"forge:diamond_tools,minecraft:swords\", \"D\", \"c\", \"minecraft:diamond\", \"advancements.the_diamond_keeper.descr\"]")
                 .defineList("tags", defaultTags, obj -> {
                     if (!(obj instanceof List)) return false;
                     List<?> list = (List<?>) obj;
-                    return list.size() == 4 && list.stream().allMatch(item -> item instanceof String);
+                    return (list.size() == 3 || list.size() == 5) && list.stream().allMatch(item -> item instanceof String);
                 });
 
         BUILDER.pop();
@@ -204,7 +208,9 @@ public class AutoTierlistConfig {
 
         for (List<String> entry : ARMAGEDDON_TAGS.get()) {
             if (entry.size() >= 3) {
-                entries.add(new TagEntry(entry.get(0), entry.get(1).charAt(0), entry.get(2).charAt(0)));
+                String headerItem = entry.size() >= 5 ? entry.get(3) : "";
+                String headerTitle = entry.size() >= 5 ? entry.get(4) : "";
+                entries.add(new TagEntry(entry.get(0), entry.get(1).charAt(0), entry.get(2).charAt(0), headerItem, headerTitle));
             }
         }
 
@@ -216,11 +222,15 @@ public class AutoTierlistConfig {
         private final List<String> tags;
         private final char label;
         private final char color;
+        private final String headerItem;
+        private final String headerTitle;
 
-        public TagEntry(String tag, char label, char color) {
+        public TagEntry(String tag, char label, char color, String headerItem, String headerTitle) {
             this.tagLine = tag;
             this.label = label;
             this.color = color;
+            this.headerItem = headerItem;
+            this.headerTitle = headerTitle;
 
             // Parse comma-separated tags
             this.tags = new ArrayList<>();
@@ -262,6 +272,18 @@ public class AutoTierlistConfig {
                 tagKeys.add(TagKey.create(net.minecraft.core.registries.Registries.ITEM, new ResourceLocation(t)));
             }
             return tagKeys;
+        }
+
+        public String getHeaderItem() {
+            return headerItem;
+        }
+
+        public String getHeaderTitle() {
+            return headerTitle;
+        }
+
+        public boolean hasHeader() {
+            return !headerItem.isEmpty() && !headerTitle.isEmpty();
         }
     }
 }

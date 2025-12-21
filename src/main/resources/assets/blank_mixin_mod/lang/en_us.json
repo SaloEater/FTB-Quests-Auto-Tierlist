@@ -21,6 +21,5 @@
   "blank_mixin_mod.command.autotierlist.help.clear": "§e/autotierlist clear §7- Remove generated tierlist chapters",
   "blank_mixin_mod.command.autotierlist.help.dump": "§e/autotierlist dump_excluded_weapons §7- Export excluded weapons to file",
   "blank_mixin_mod.command.autotierlist.help.config": "§7Config: §fconfig/blank_mixin_mod-client.toml",
-  "blank_mixin_mod.command.autotierlist.help.note": "§c§oNote: These commands only work in single-player worlds",
-  "blank_mixin_mod.command.autotierlist.tier.iron": "Iron Tier",
+  "blank_mixin_mod.command.autotierlist.help.note": "§c§oNote: These commands only work in single-player worlds"
 }
