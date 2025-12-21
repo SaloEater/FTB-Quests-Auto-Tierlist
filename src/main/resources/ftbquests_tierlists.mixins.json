@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "minVersion": "0.7",
+  "package": "com.saloeater.ftbquests_tierlists.autotierlist.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "refmap": "ftbquests_tierlists.refmap.json",
+  "client": [
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "mixins": [
+    "QuestAccessor",
+    "SmithingTransformRecipeAccessor"
+  ]
+}

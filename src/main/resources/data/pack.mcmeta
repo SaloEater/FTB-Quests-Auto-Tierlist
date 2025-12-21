@@ -1,8 +1,8 @@
 {
-"id": "blank_mixin_mod",
+"id": "ftbquests_tierlists",
     "pack": {
         "description": {
-            "translate": "Blank Mixin Mod"
+            "translate": "FTBQuests Tierlists"
         },
         "pack_format": 81
     }
