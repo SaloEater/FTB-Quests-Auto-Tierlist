@@ -47,20 +47,21 @@ public class ClientEventHandler {
 
                 // Schedule generation on server thread to ensure all mods are loaded
                 mc.getSingleplayerServer().execute(() -> {
-                    if (AutoTierlistConfig.autoGenerateOnStart) {
-                        LOGGER.info("Auto-generating tierlists on world load...");
+                    if (AutoTierlistConfig.AUTO_GENERATE_ON_START.get()) {
+                        LOGGER.info("Auto-generating tierlists on world load (non-progression mode)...");
                         try {
                             // Initialize EMI integration
                             EMIIntegration.initialize();
 
                             TierlistGenerator generator = new TierlistGenerator();
-                            generator.generateAll(mc.getSingleplayerServer());
+                            // Auto-generation defaults to non-progression mode (false)
+                            generator.generateAll(mc.getSingleplayerServer(), false);
                         } catch (Exception e) {
                             LOGGER.error("Failed to auto-generate tierlists on world load", e);
                         }
                     } else {
                         LOGGER.info("Auto-generation on world load is disabled in config");
-                        LOGGER.info("Use '/autotierlist generate' to manually generate tierlists");
+                        LOGGER.info("Use '/autotierlist generate' or '/autotierlist generate progression' to manually generate tierlists");
                     }
                 });
             }

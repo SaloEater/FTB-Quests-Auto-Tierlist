@@ -65,8 +65,8 @@ public class WeaponTierlistGenerator extends AbstractTierlistGenerator<ItemData.
 
     @Override
     protected String getTierLabel(int tier) {
-        double minDPS = tier * AutoTierlistConfig.tierMultiplier;
-        double maxDPS = (tier + 1) * AutoTierlistConfig.tierMultiplier;
+        double minDPS = tier * AutoTierlistConfig.TIER_MULTIPLIER;
+        double maxDPS = (tier + 1) * AutoTierlistConfig.TIER_MULTIPLIER;
         return String.format("[%d] DPS: [%.1f-%.1f)", tier, minDPS, maxDPS);
     }
 

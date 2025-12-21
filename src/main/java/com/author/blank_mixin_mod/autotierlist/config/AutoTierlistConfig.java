@@ -8,8 +8,6 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
 import net.minecraftforge.common.ForgeConfigSpec;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.config.ModConfigEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
 import org.slf4j.Logger;
 
 import java.io.InputStream;
@@ -28,9 +26,6 @@ public class AutoTierlistConfig {
     public static final ForgeConfigSpec.BooleanValue AUTO_GENERATE_ON_START;
     public static final ForgeConfigSpec.BooleanValue ENABLE_WEAPON_TIERLIST;
     public static final ForgeConfigSpec.BooleanValue ENABLE_ARMOR_TIERLIST;
-
-    // Progression settings
-    public static final ForgeConfigSpec.BooleanValue ENABLE_PROGRESSION_ALIGNMENT;
 
     // Layout settings
     //public static final ForgeConfigSpec.IntValue ROWS_PER_TIER;
@@ -52,19 +47,9 @@ public class AutoTierlistConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_ITEMS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends List<String>>> ARMAGEDDON_TAGS;
 
-    // Cached values for fast access
-    public static boolean autoGenerateOnStart;
-    public static boolean enableWeaponTierlist;
-    public static boolean enableArmorTierlist;
-    public static double tierMultiplier;
-    public static boolean enableProgressionAlignment;
-    public static int rowsPerTier;
-    public static double questSpacingX;
-    public static double questSpacingY;
-    public static double tierSpacingY;
-    public static boolean useAttributeDetection;
-    public static List<String> skippedEmiCategories;
-    public static List<String> skippedItems;
+    // Constants (not from config)
+    public static final double TIER_MULTIPLIER = 1.6;
+    public static final int ROWS_PER_TIER = 1;
 
     static {
         BUILDER.comment("Auto-Tierlist Configuration").push("autotierlist");
@@ -81,11 +66,6 @@ public class AutoTierlistConfig {
         ENABLE_ARMOR_TIERLIST = BUILDER
             .comment("Enable armor tierlist generation")
             .define("enableArmorTierlist", true);
-
-        // Progression settings
-        ENABLE_PROGRESSION_ALIGNMENT = BUILDER
-            .comment("Align items in the same column if they share crafting relationships")
-            .define("enableProgressionAlignment", true);
 
         // Layout settings
         /*ROWS_PER_TIER = BUILDER
@@ -215,22 +195,9 @@ public class AutoTierlistConfig {
                 });
 
         BUILDER.pop();
-
-        tierMultiplier = 1.6;
-        rowsPerTier = 1;
     }
 
     public static final ForgeConfigSpec SPEC = BUILDER.build();
-
-    @SubscribeEvent
-    public static void onLoad(final ModConfigEvent.Loading event) {
-        refreshCachedValues();
-    }
-
-    @SubscribeEvent
-    public static void onReload(final ModConfigEvent.Reloading event) {
-        refreshCachedValues();
-    }
 
     public static List<TagEntry> getArmageddonTagEntries() {
         List<TagEntry> entries = new ArrayList<>();
@@ -296,41 +263,5 @@ public class AutoTierlistConfig {
             }
             return tagKeys;
         }
-    }
-
-    /**
-     * Refresh all cached config values from the config spec.
-     * Called automatically on config load/reload, or can be called manually.
-     */
-    public static void refreshCachedValues() {
-        AUTO_GENERATE_ON_START.clearCache();
-        ENABLE_WEAPON_TIERLIST.clearCache();
-        ENABLE_ARMOR_TIERLIST.clearCache();
-        ENABLE_PROGRESSION_ALIGNMENT.clearCache();
-//        ROWS_PER_TIER.clearCache();
-        QUEST_SPACING_X.clearCache();
-        QUEST_SPACING_Y.clearCache();
-        TIER_SPACING_Y.clearCache();
-        USE_ATTRIBUTE_DETECTION.clearCache();
-        SKIPPED_EMI_CATEGORIES.clearCache();
-        SKIPPED_ITEMS.clearCache();
-        WEAPON_ITEMS.clearCache();
-        ARMOR_ITEMS.clearCache();
-        WEAPON_TAGS.clearCache();
-        ARMOR_TAGS.clearCache();
-        WEAPON_TIER_OVERRIDES.clearCache();
-        ARMOR_TIER_OVERRIDES.clearCache();
-
-        autoGenerateOnStart = AUTO_GENERATE_ON_START.get();
-        enableWeaponTierlist = ENABLE_WEAPON_TIERLIST.get();
-        enableArmorTierlist = ENABLE_ARMOR_TIERLIST.get();
-        enableProgressionAlignment = ENABLE_PROGRESSION_ALIGNMENT.get();
-//        rowsPerTier = ROWS_PER_TIER.get();
-        questSpacingX = QUEST_SPACING_X.get();
-        questSpacingY = QUEST_SPACING_Y.get();
-        tierSpacingY = TIER_SPACING_Y.get();
-        useAttributeDetection = USE_ATTRIBUTE_DETECTION.get();
-        skippedEmiCategories = List.copyOf(SKIPPED_EMI_CATEGORIES.get());
-        skippedItems = List.copyOf(SKIPPED_ITEMS.get());
     }
 }

@@ -9,7 +9,6 @@ import com.author.blank_mixin_mod.autotierlist.progression.CraftingChainDetector
 import com.mojang.logging.LogUtils;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ConfigValue;
-import dev.ftb.mods.ftblibrary.config.DoubleConfig;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftbquests.quest.*;
 import net.minecraft.resources.ResourceLocation;
@@ -37,14 +36,18 @@ public abstract class AbstractTierlistGenerator<T> {
     }
 
     /**
-     * Generate the tierlist chapter.
+     * Generate the tierlist chapter using the 3-phase pipeline.
+     *
+     * @param questFile The quest file
+     * @param level The server level
+     * @param enableProgressionAlignment Whether to enable progression-based alignment
      */
-    public void generate(ServerQuestFile questFile, ServerLevel level) {
-        LOGGER.info("Generating {} tierlist...", getItemTypeName());
+    public void generate(ServerQuestFile questFile, ServerLevel level, boolean enableProgressionAlignment) {
+        LOGGER.info("Generating {} tierlist (progression: {})...", getItemTypeName(), enableProgressionAlignment);
 
         try {
             // 1. Create and configure item filter
-            ItemFilter filter = new ItemFilter(AutoTierlistConfig.useAttributeDetection);
+            ItemFilter filter = new ItemFilter(AutoTierlistConfig.USE_ATTRIBUTE_DETECTION.get());
             filter.loadSkippedItems(AutoTierlistConfig.SKIPPED_ITEMS.get());
             configureFilter(filter);
             LOGGER.info("Item filter configured: {}", filter.getStats());
@@ -60,41 +63,65 @@ public abstract class AbstractTierlistGenerator<T> {
 
             // 3. Calculate tier assignments
             TierCalculator calculator = new TierCalculator(
-                AutoTierlistConfig.tierMultiplier,
-                AutoTierlistConfig.rowsPerTier,
+                AutoTierlistConfig.TIER_MULTIPLIER,
+                AutoTierlistConfig.ROWS_PER_TIER,
                 overrideManager
             );
             Map<Integer, List<TierCalculator.TieredItem<T>>> tiers = assignTiers(calculator, items);
 
+            // Flatten tiered items into a single list
+            List<TierCalculator.TieredItem<T>> allTieredItems = new ArrayList<>();
+            for (List<TierCalculator.TieredItem<T>> tierItems : tiers.values()) {
+                allTieredItems.addAll(tierItems);
+            }
+
+            // Build tier map and score map for grouping and layout
+            Map<ResourceLocation, Integer> tierMap = new HashMap<>();
+            Map<ResourceLocation, Double> scoreMap = new HashMap<>();
+            for (TierCalculator.TieredItem<T> item : allTieredItems) {
+                ResourceLocation id = getItemId(item.data());
+                tierMap.put(id, item.tier());
+                scoreMap.put(id, getItemScore(item.data()));
+            }
+
             // 4. Detect progression chains if enabled
-            Map<ResourceLocation, Integer> columnAssignments = new HashMap<>();
             Map<ResourceLocation, Set<ResourceLocation>> recipeGraph = new HashMap<>();
-            if (AutoTierlistConfig.enableProgressionAlignment) {
+            if (enableProgressionAlignment) {
                 try {
                     CraftingChainDetector detector = new CraftingChainDetector(level.getRecipeManager());
                     List<ResourceLocation> itemIds = items.stream()
                         .map(this::getItemId)
                         .collect(Collectors.toList());
                     recipeGraph = detector.getRecipeGraph(itemIds);
-
-                    // Build tier map and score map for sorting chains
-                    Map<ResourceLocation, Integer> tierMap = new HashMap<>();
-                    Map<ResourceLocation, Double> scoreMap = new HashMap<>();
-                    for (Map.Entry<Integer, List<TierCalculator.TieredItem<T>>> entry : tiers.entrySet()) {
-                        for (TierCalculator.TieredItem<T> item : entry.getValue()) {
-                            ResourceLocation id = getItemId(item.data());
-                            tierMap.put(id, item.tier());
-                            scoreMap.put(id, getItemScore(item.data()));
-                        }
-                    }
-
-                    columnAssignments = ProgressionHelper.assignProgressionColumns(itemIds, recipeGraph, tierMap, scoreMap);
-                    LOGGER.info("Assigned {} {} to progression columns", columnAssignments.size(), getItemTypeName());
+                    LOGGER.info("Detected {} recipe relationships", recipeGraph.size());
                 } catch (Exception e) {
                     LOGGER.error("Failed to detect progression chains, continuing without progression alignment", e);
                 }
             }
 
+            // === PHASE 1: Build item groups ===
+            ItemGroupBuilder<T> groupBuilder = new ItemGroupBuilder<>(
+                this::getItemId,
+                this::getItemStack,
+                this::getItemScore
+            );
+            List<ItemGroup<T>> groups = groupBuilder.buildGroups(allTieredItems, recipeGraph, tierMap, enableProgressionAlignment);
+
+            // === PHASE 2: Calculate layout for groups ===
+            GroupLayoutCalculator<T> layoutCalculator = new GroupLayoutCalculator<>(
+                this::getItemId,
+                this::getItemScore
+            );
+            int groupSpacing = enableProgressionAlignment ? GroupLayoutCalculator.PROGRESSION_SPACING : GroupLayoutCalculator.TIER_SPACING;
+            layoutCalculator.calculateLayout(groups, recipeGraph, tierMap, scoreMap, groupSpacing);
+
+            // Build global column assignments from all groups
+            Map<ResourceLocation, Integer> columnAssignments = new HashMap<>();
+            for (ItemGroup<T> group : groups) {
+                columnAssignments.putAll(group.getColumnAssignments());
+            }
+
+            // === PHASE 3: Generate quests ===
             // 5. Create chapter
             ChapterGroup defaultGroup = questFile.getDefaultChapterGroup();
             if (defaultGroup == null) {
@@ -116,11 +143,12 @@ public abstract class AbstractTierlistGenerator<T> {
             }
 
             // 7. Create quest dependencies based on crafting relationships
-            if (AutoTierlistConfig.enableProgressionAlignment && !recipeGraph.isEmpty()) {
+            if (enableProgressionAlignment && !recipeGraph.isEmpty()) {
                 createQuestDependencies(recipeGraph);
             }
 
-            LOGGER.info("{} tierlist generated successfully with {} tiers", getItemTypeName(), tiers.size());
+            LOGGER.info("{} tierlist generated successfully with {} tiers and {} groups",
+                getItemTypeName(), tiers.size(), groups.size());
 
         } catch (Exception e) {
             LOGGER.error("Failed to generate {} tierlist", getItemTypeName(), e);
@@ -137,9 +165,9 @@ public abstract class AbstractTierlistGenerator<T> {
         // Calculate tier base Y position using sequential index, not tier number
         double tierBaseY = QuestFactory.calculateTierBaseY(
             tierIndex,
-            AutoTierlistConfig.rowsPerTier,
-            AutoTierlistConfig.questSpacingY,
-            AutoTierlistConfig.tierSpacingY
+            AutoTierlistConfig.ROWS_PER_TIER,
+            AutoTierlistConfig.QUEST_SPACING_Y.get(),
+            AutoTierlistConfig.TIER_SPACING_Y.get()
         );
 
         // Create secret tier marker quest
@@ -153,15 +181,15 @@ public abstract class AbstractTierlistGenerator<T> {
         }
 
         // Generate quests for each row
-        for (int row = 0; row < AutoTierlistConfig.rowsPerTier; row++) {
+        for (int row = 0; row < AutoTierlistConfig.ROWS_PER_TIER; row++) {
             List<TierCalculator.TieredItem<T>> rowItems = rowMap.get(row);
             if (rowItems == null || rowItems.isEmpty()) {
                 continue;
             }
 
-            double questY = QuestFactory.calculateQuestY(tierBaseY, row, AutoTierlistConfig.questSpacingY);
+            double questY = QuestFactory.calculateQuestY(tierBaseY, row, AutoTierlistConfig.QUEST_SPACING_Y.get());
             // Calculate global row number for alternating colors (tierIndex * rowsPerTier + row)
-            int globalRowNumber = tierIndex * AutoTierlistConfig.rowsPerTier + row;
+            int globalRowNumber = tierIndex * AutoTierlistConfig.ROWS_PER_TIER + row;
             generateRowQuests(questFile, chapter, rowItems, questY, columnAssignments, globalRowNumber);
         }
     }
@@ -200,11 +228,11 @@ public abstract class AbstractTierlistGenerator<T> {
             if (columnAssignments.containsKey(itemId)) {
                 // Use assigned column
                 int column = columnAssignments.get(itemId);
-                questX = column * AutoTierlistConfig.questSpacingX;
+                questX = column * AutoTierlistConfig.QUEST_SPACING_X.get();
                 nextAutoColumn = Math.max(nextAutoColumn, column + 1);
             } else {
                 // Use sequential placement
-                questX = nextAutoColumn * AutoTierlistConfig.questSpacingX;
+                questX = nextAutoColumn * AutoTierlistConfig.QUEST_SPACING_X.get();
                 nextAutoColumn++;
             }
 

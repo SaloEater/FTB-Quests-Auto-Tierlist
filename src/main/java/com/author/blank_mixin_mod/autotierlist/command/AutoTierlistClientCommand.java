@@ -4,17 +4,18 @@ import com.author.blank_mixin_mod.autotierlist.generation.TierlistGenerator;
 import com.author.blank_mixin_mod.autotierlist.integration.EMIIntegration;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.context.CommandContextBuilder;
 import dev.ftb.mods.ftbquests.command.FTBQuestsCommands;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.commands.CommandRuntimeException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 
-import static com.author.blank_mixin_mod.autotierlist.config.AutoTierlistConfig.*;
 
 /**
  * Client commands for managing Auto-Tierlist generation.
@@ -28,11 +29,23 @@ public class AutoTierlistClientCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("autotierlist")
             .then(Commands.literal("generate")
-                .executes(AutoTierlistClientCommand::generate))
+                .then(Commands.argument("mode", StringArgumentType.word())
+                    .suggests((context, builder) -> {
+                        builder.suggest("crafting_progression");
+                        builder.suggest("tier_progression");
+                        return builder.buildFuture();
+                    })
+                    .executes(ctx -> {
+                        String mode = StringArgumentType.getString(ctx, "mode");
+                        if (mode.equals("crafting_progression")) {
+                            return generateCraftingProgression(ctx);
+                        } else if (mode.equals("tier_progression")) {
+                            return generate(ctx);
+                        }
+                        throw new CommandRuntimeException(Component.translatable("blank_mixin_mod.command.autotierlist.invalid_mode"));
+                    })))
             .then(Commands.literal("clear")
                 .executes(AutoTierlistClientCommand::clear))
-            .then(Commands.literal("reload")
-                .executes(AutoTierlistClientCommand::reload))
             .then(Commands.literal("dump_excluded_weapons")
                 .executes(AutoTierlistClientCommand::dumpExcludedWeapons))
             .executes(AutoTierlistClientCommand::help)
@@ -49,14 +62,14 @@ public class AutoTierlistClientCommand {
 
         if (player == null) {
             context.getSource().sendFailure(
-                Component.literal("§c[Auto-Tierlist] No player found")
+                Component.translatable("blank_mixin_mod.command.autotierlist.no_player")
             );
             return null;
         }
 
         if (!mc.hasSingleplayerServer()) {
             context.getSource().sendFailure(
-                Component.literal("§c[Auto-Tierlist] This command only works in single-player worlds")
+                Component.translatable("blank_mixin_mod.command.autotierlist.singleplayer_only")
             );
             return null;
         }
@@ -64,7 +77,7 @@ public class AutoTierlistClientCommand {
         MinecraftServer server = mc.getSingleplayerServer();
         if (server == null) {
             context.getSource().sendFailure(
-                Component.literal("§c[Auto-Tierlist] Failed to access integrated server")
+                Component.translatable("blank_mixin_mod.command.autotierlist.no_server")
             );
             return null;
         }
@@ -73,17 +86,32 @@ public class AutoTierlistClientCommand {
     }
 
     /**
-     * Generate tierlists.
+     * Generate tierlists (default - tier progression mode).
      */
     private static int generate(CommandContext<CommandSourceStack> context) {
+        return generateWithMode(context, false);
+    }
+
+    /**
+     * Generate tierlists (crafting progression mode).
+     */
+    private static int generateCraftingProgression(CommandContext<CommandSourceStack> context) {
+        return generateWithMode(context, true);
+    }
+
+    /**
+     * Generate tierlists with specified progression mode.
+     */
+    private static int generateWithMode(CommandContext<CommandSourceStack> context, boolean enableCraftingProgression) {
         MinecraftServer server = getIntegratedServer(context);
         if (server == null) {
             return 0;
         }
 
         try {
+            String modeKey = enableCraftingProgression ? "blank_mixin_mod.command.autotierlist.mode.crafting" : "blank_mixin_mod.command.autotierlist.mode.tier";
             context.getSource().sendSuccess(
-                () -> Component.literal("§e[Auto-Tierlist] Starting generation..."),
+                () -> Component.translatable("blank_mixin_mod.command.autotierlist.generate.starting", Component.translatable(modeKey)),
                 true
             );
 
@@ -94,15 +122,15 @@ public class AutoTierlistClientCommand {
             server.execute(() -> {
                 try {
                     TierlistGenerator generator = new TierlistGenerator();
-                    generator.generateAll(server);
+                    generator.generateAll(server, enableCraftingProgression);
 
                     context.getSource().sendSuccess(
-                        () -> Component.literal("§a[Auto-Tierlist] Generation complete! Check the FTBQuests menu."),
+                        () -> Component.translatable("blank_mixin_mod.command.autotierlist.generate.complete"),
                         true
                     );
                 } catch (Exception e) {
                     context.getSource().sendFailure(
-                        Component.literal("§c[Auto-Tierlist] Failed to generate: " + e.getMessage())
+                        Component.translatable("blank_mixin_mod.command.autotierlist.generate.failed", e.getMessage())
                     );
                     e.printStackTrace();
                 }
@@ -113,7 +141,7 @@ public class AutoTierlistClientCommand {
             return Command.SINGLE_SUCCESS;
         } catch (Exception e) {
             context.getSource().sendFailure(
-                Component.literal("§c[Auto-Tierlist] Failed to generate: " + e.getMessage())
+                Component.translatable("blank_mixin_mod.command.autotierlist.generate.failed", e.getMessage())
             );
             e.printStackTrace();
             return 0;
@@ -131,7 +159,7 @@ public class AutoTierlistClientCommand {
 
         try {
             context.getSource().sendSuccess(
-                () -> Component.literal("§e[Auto-Tierlist] Clearing existing chapters..."),
+                () -> Component.translatable("blank_mixin_mod.command.autotierlist.clear.starting"),
                 true
             );
 
@@ -142,12 +170,12 @@ public class AutoTierlistClientCommand {
                     generator.clearAll(server);
 
                     context.getSource().sendSuccess(
-                        () -> Component.literal("§a[Auto-Tierlist] Cleared! Quest files should be removed."),
+                        () -> Component.translatable("blank_mixin_mod.command.autotierlist.clear.complete"),
                         true
                     );
                 } catch (Exception e) {
                     context.getSource().sendFailure(
-                        Component.literal("§c[Auto-Tierlist] Failed to clear: " + e.getMessage())
+                        Component.translatable("blank_mixin_mod.command.autotierlist.clear.failed", e.getMessage())
                     );
                     e.printStackTrace();
                 }
@@ -156,64 +184,7 @@ public class AutoTierlistClientCommand {
             return Command.SINGLE_SUCCESS;
         } catch (Exception e) {
             context.getSource().sendFailure(
-                Component.literal("§c[Auto-Tierlist] Failed to clear: " + e.getMessage())
-            );
-            e.printStackTrace();
-            return 0;
-        }
-    }
-
-    /**
-     * Reload config and regenerate.
-     */
-    private static int reload(CommandContext<CommandSourceStack> context) {
-        MinecraftServer server = getIntegratedServer(context);
-        if (server == null) {
-            return 0;
-        }
-
-        try {
-            context.getSource().sendSuccess(
-                () -> Component.literal("§e[Auto-Tierlist] Reloading config..."),
-                true
-            );
-
-            // Refresh cached config values
-            // Note: Config file changes are automatically detected by Forge
-            // This ensures our cached values match the current config state
-            refreshCachedValues();
-
-            context.getSource().sendSuccess(
-                () -> Component.literal("§e[Auto-Tierlist] Clearing old chapters and regenerating..."),
-                true
-            );
-
-            // Run on server thread
-            server.execute(() -> {
-                try {
-                    // Initialize EMI integration
-                    EMIIntegration.initialize();
-
-                    // Regenerate with new config values
-                    TierlistGenerator generator = new TierlistGenerator();
-                    generator.generateAll(server);
-
-                    context.getSource().sendSuccess(
-                        () -> Component.literal("§a[Auto-Tierlist] Reload complete! Config applied and tierlists regenerated."),
-                        true
-                    );
-                } catch (Exception e) {
-                    context.getSource().sendFailure(
-                        Component.literal("§c[Auto-Tierlist] Failed to reload: " + e.getMessage())
-                    );
-                    e.printStackTrace();
-                }
-            });
-
-            return Command.SINGLE_SUCCESS;
-        } catch (Exception e) {
-            context.getSource().sendFailure(
-                Component.literal("§c[Auto-Tierlist] Failed to reload: " + e.getMessage())
+                Component.translatable("blank_mixin_mod.command.autotierlist.clear.failed", e.getMessage())
             );
             e.printStackTrace();
             return 0;
@@ -231,7 +202,7 @@ public class AutoTierlistClientCommand {
 
         try {
             context.getSource().sendSuccess(
-                () -> Component.literal("§e[Auto-Tierlist] Scanning for excluded weapons..."),
+                () -> Component.translatable("blank_mixin_mod.command.autotierlist.dump.starting"),
                 true
             );
 
@@ -243,10 +214,11 @@ public class AutoTierlistClientCommand {
 
                     // Create item filter
                     com.author.blank_mixin_mod.autotierlist.config.ItemFilter filter =
-                        new com.author.blank_mixin_mod.autotierlist.config.ItemFilter(useAttributeDetection);
-                    filter.loadSkippedItems(SKIPPED_ITEMS.get());
-                    filter.loadWeaponTags(WEAPON_TAGS.get());
-                    filter.loadWeaponItems(WEAPON_ITEMS.get());
+                        new com.author.blank_mixin_mod.autotierlist.config.ItemFilter(
+                            com.author.blank_mixin_mod.autotierlist.config.AutoTierlistConfig.USE_ATTRIBUTE_DETECTION.get());
+                    filter.loadSkippedItems(com.author.blank_mixin_mod.autotierlist.config.AutoTierlistConfig.SKIPPED_ITEMS.get());
+                    filter.loadWeaponTags(com.author.blank_mixin_mod.autotierlist.config.AutoTierlistConfig.WEAPON_TAGS.get());
+                    filter.loadWeaponItems(com.author.blank_mixin_mod.autotierlist.config.AutoTierlistConfig.WEAPON_ITEMS.get());
 
                     // Collect excluded weapons
                     java.util.Map<String, java.util.List<ExcludedWeaponInfo>> weaponsByMod = new java.util.TreeMap<>();
@@ -312,12 +284,12 @@ public class AutoTierlistClientCommand {
 
                     int finalTotalExcluded = totalExcluded;
                     context.getSource().sendSuccess(
-                        () -> Component.literal("§a[Auto-Tierlist] Dumped " + finalTotalExcluded + " excluded weapons to: " + outputPath.toAbsolutePath()),
+                        () -> Component.translatable("blank_mixin_mod.command.autotierlist.dump.complete", finalTotalExcluded, outputPath.toAbsolutePath()),
                         true
                     );
                 } catch (Exception e) {
                     context.getSource().sendFailure(
-                        Component.literal("§c[Auto-Tierlist] Failed to dump: " + e.getMessage())
+                        Component.translatable("blank_mixin_mod.command.autotierlist.dump.failed", e.getMessage())
                     );
                     e.printStackTrace();
                 }
@@ -326,7 +298,7 @@ public class AutoTierlistClientCommand {
             return Command.SINGLE_SUCCESS;
         } catch (Exception e) {
             context.getSource().sendFailure(
-                Component.literal("§c[Auto-Tierlist] Failed to dump: " + e.getMessage())
+                Component.translatable("blank_mixin_mod.command.autotierlist.dump.failed", e.getMessage())
             );
             e.printStackTrace();
             return 0;
@@ -353,13 +325,21 @@ public class AutoTierlistClientCommand {
      */
     private static int help(CommandContext<CommandSourceStack> context) {
         context.getSource().sendSuccess(
-            () -> Component.literal("§6=== Auto-Tierlist Commands (Client) ===\n" +
-                "§e/autotierlist generate §7- Generate weapon and armor tierlists\n" +
-                "§e/autotierlist clear §7- Remove generated tierlist chapters\n" +
-                "§e/autotierlist reload §7- Clear and regenerate with current config\n" +
-                "§e/autotierlist dump_excluded_weapons §7- Export excluded weapons to file\n" +
-                "§7Config: §fconfig/blank_mixin_mod-client.toml\n" +
-                "§c§oNote: These commands only work in single-player worlds"),
+            () -> Component.translatable("blank_mixin_mod.command.autotierlist.help.header")
+                .append(Component.literal("\n"))
+                .append(Component.translatable("blank_mixin_mod.command.autotierlist.help.generate"))
+                .append(Component.literal("\n"))
+                .append(Component.translatable("blank_mixin_mod.command.autotierlist.help.generate.crafting"))
+                .append(Component.literal("\n"))
+                .append(Component.translatable("blank_mixin_mod.command.autotierlist.help.generate.tier"))
+                .append(Component.literal("\n"))
+                .append(Component.translatable("blank_mixin_mod.command.autotierlist.help.clear"))
+                .append(Component.literal("\n"))
+                .append(Component.translatable("blank_mixin_mod.command.autotierlist.help.dump"))
+                .append(Component.literal("\n"))
+                .append(Component.translatable("blank_mixin_mod.command.autotierlist.help.config"))
+                .append(Component.literal("\n"))
+                .append(Component.translatable("blank_mixin_mod.command.autotierlist.help.note")),
             false
         );
         return Command.SINGLE_SUCCESS;

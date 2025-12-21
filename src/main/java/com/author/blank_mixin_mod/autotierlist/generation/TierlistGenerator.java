@@ -23,9 +23,12 @@ public class TierlistGenerator {
 
     /**
      * Generate all tierlists (weapons and armor).
+     *
+     * @param server The Minecraft server
+     * @param enableProgressionAlignment Whether to enable progression-based alignment
      */
-    public void generateAll(MinecraftServer server) {
-        LOGGER.info("Starting Auto-Tierlist generation...");
+    public void generateAll(MinecraftServer server, boolean enableProgressionAlignment) {
+        LOGGER.info("Starting Auto-Tierlist generation (progression: {})...", enableProgressionAlignment);
 
         try {
             // Get quest file
@@ -45,11 +48,11 @@ public class TierlistGenerator {
             cleanupExistingChapters(questFile);
 
             // Generate weapon tierlist
-            if (AutoTierlistConfig.enableWeaponTierlist) {
+            if (AutoTierlistConfig.ENABLE_WEAPON_TIERLIST.get()) {
                 try {
                     LOGGER.info("Generating weapon tierlist...");
                     WeaponTierlistGenerator weaponGen = new WeaponTierlistGenerator(overrideManager);
-                    weaponGen.generate(questFile, server.overworld());
+                    weaponGen.generate(questFile, server.overworld(), enableProgressionAlignment);
                     LOGGER.info("Weapon tierlist generation complete");
                 } catch (Exception e) {
                     LOGGER.error("Failed to generate weapon tierlist", e);
@@ -59,11 +62,11 @@ public class TierlistGenerator {
             }
 
             // Generate armor tierlist
-            if (AutoTierlistConfig.enableArmorTierlist) {
+            if (AutoTierlistConfig.ENABLE_ARMOR_TIERLIST.get()) {
                 try {
                     LOGGER.info("Generating armor tierlist...");
                     ArmorTierlistGenerator armorGen = new ArmorTierlistGenerator(overrideManager);
-                    armorGen.generate(questFile, server.overworld());
+                    armorGen.generate(questFile, server.overworld(), enableProgressionAlignment);
                     LOGGER.info("Armor tierlist generation complete");
                 } catch (Exception e) {
                     LOGGER.error("Failed to generate armor tierlist", e);

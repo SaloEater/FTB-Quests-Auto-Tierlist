@@ -71,8 +71,9 @@ public class EMIIntegration {
         Set<ResourceLocation> relevantSet = new HashSet<>(relevantItems);
 
         // Log skipped categories
-        if (!AutoTierlistConfig.skippedEmiCategories.isEmpty()) {
-            LOGGER.info("Skipping EMI recipe categories: {}", String.join(", ", AutoTierlistConfig.skippedEmiCategories));
+        List<? extends String> skippedCategories = AutoTierlistConfig.SKIPPED_EMI_CATEGORIES.get();
+        if (!skippedCategories.isEmpty()) {
+            LOGGER.info("Skipping EMI recipe categories: {}", String.join(", ", skippedCategories));
         }
 
         try {
@@ -116,7 +117,7 @@ public class EMIIntegration {
         String categoryId = category.getId().toString();
 
         // Check if this category is in the skip list
-        for (String skippedCategory : AutoTierlistConfig.skippedEmiCategories) {
+        for (String skippedCategory : AutoTierlistConfig.SKIPPED_EMI_CATEGORIES.get()) {
             if (categoryId.equals(skippedCategory)) {
                 return false;
             }
