@@ -7,10 +7,11 @@ import com.author.blank_mixin_mod.autotierlist.config.ItemFilter;
 import com.author.blank_mixin_mod.autotierlist.config.TierOverrideManager;
 import com.author.blank_mixin_mod.autotierlist.progression.CraftingChainDetector;
 import com.mojang.logging.LogUtils;
-import dev.ftb.mods.ftbquests.quest.Chapter;
-import dev.ftb.mods.ftbquests.quest.ChapterGroup;
-import dev.ftb.mods.ftbquests.quest.Quest;
-import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
+import dev.ftb.mods.ftblibrary.config.ConfigGroup;
+import dev.ftb.mods.ftblibrary.config.ConfigValue;
+import dev.ftb.mods.ftblibrary.config.DoubleConfig;
+import dev.ftb.mods.ftblibrary.icon.Icon;
+import dev.ftb.mods.ftbquests.quest.*;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
@@ -159,7 +160,9 @@ public abstract class AbstractTierlistGenerator<T> {
             }
 
             double questY = QuestFactory.calculateQuestY(tierBaseY, row, AutoTierlistConfig.questSpacingY);
-            generateRowQuests(questFile, chapter, rowItems, questY, columnAssignments);
+            // Calculate global row number for alternating colors (tierIndex * rowsPerTier + row)
+            int globalRowNumber = tierIndex * AutoTierlistConfig.rowsPerTier + row;
+            generateRowQuests(questFile, chapter, rowItems, questY, columnAssignments, globalRowNumber);
         }
     }
 
@@ -169,17 +172,22 @@ public abstract class AbstractTierlistGenerator<T> {
     private void generateRowQuests(ServerQuestFile questFile, Chapter chapter,
                                    List<TierCalculator.TieredItem<T>> items,
                                    double questY,
-                                   Map<ResourceLocation, Integer> columnAssignments) {
-        // Sort items: first by column assignment, then by score (weaker first)
+                                   Map<ResourceLocation, Integer> columnAssignments,
+                                   int rowNumber) {
+        // Sort items: first by column assignment, then by Armageddon tag order, then by score (weaker first)
         if (!columnAssignments.isEmpty()) {
             // Sort by assigned column (items without assignments get -1 to appear first),
+            // then by Armageddon tag order (items with no tags = -1 to appear first),
             // then by score (ascending - weaker items first)
             items.sort(Comparator.comparing((TierCalculator.TieredItem<T> item) ->
                     columnAssignments.getOrDefault(getItemId(item.data()), -1))
+                .thenComparing(item -> getArmageddonTagIndex(getItemStack(item.data())))
                 .thenComparing(item -> getItemScore(item.data())));
         } else {
-            // No progression mode - sort all items by score (weaker first)
-            items.sort(Comparator.comparing(item -> getItemScore(item.data())));
+            // No progression mode - sort by Armageddon tag order, then by score (weaker first)
+            items.sort(Comparator.comparing((TierCalculator.TieredItem<T> item) ->
+                    getArmageddonTagIndex(getItemStack(item.data())))
+                .thenComparing(item -> getItemScore(item.data())));
         }
 
         // Track current X position for sequential placement
@@ -204,6 +212,46 @@ public abstract class AbstractTierlistGenerator<T> {
             Quest quest = QuestFactory.createItemQuest(questFile, chapter, getItemStack(item.data()), questX, questY);
             itemToQuestMap.put(itemId, quest);
         }
+
+        // Create background image for the row
+        // Alternate between light and dark gray based on row number
+        String imagePath = (rowNumber % 2 == 0)
+            ? "ftblibrary:textures/gui/row_light_gray.png"
+            : "ftblibrary:textures/gui/row_dark_gray.png";
+
+        ChapterImage image = new ChapterImage(chapter);
+        image.setImage(Icon.getIcon(new ResourceLocation(imagePath)));
+
+        ConfigGroup group = new ConfigGroup("");
+        image.fillConfigGroup(group);
+
+        // Calculate image dimensions
+        // Start at the same X position as the secret tier quest (-2.0)
+        double imageX = -2.0;
+        double imageY = questY;
+        double imageWidth = 1000.0;  // Fixed large width
+        double imageHeight = 0.05;  // Very narrow vertical strip
+
+        for (var value : group.getValues()) {
+            if (value.id.equals("width")) {
+                ConfigValue<Double> widthVal = (ConfigValue<Double>) value;
+                widthVal.setCurrentValue(imageWidth);
+                widthVal.applyValue();
+            } else if (value.id.equals("height")) {
+                ConfigValue<Double> heightVal = (ConfigValue<Double>) value;
+                heightVal.setCurrentValue(imageHeight);
+                heightVal.applyValue();
+            } else if (value.id.equals("x")) {
+                ConfigValue<Double> xVal = (ConfigValue<Double>) value;
+                xVal.setCurrentValue(imageX);
+                xVal.applyValue();
+            } else if (value.id.equals("y")) {
+                ConfigValue<Double> yVal = (ConfigValue<Double>) value;
+                yVal.setCurrentValue(imageY);
+                yVal.applyValue();
+            }
+        }
+        chapter.addImage(image);
     }
 
     /**
@@ -323,6 +371,31 @@ public abstract class AbstractTierlistGenerator<T> {
 
         currentPath.remove(currentPath.size() - 1);
         return null;
+    }
+
+    /**
+     * Get the Armageddon tag index for an item.
+     * Returns -1 if the item has no Armageddon tags (will appear first).
+     * Returns the index of the first matching tag in the config (0, 1, 2, etc.).
+     * This allows sorting items by their tag priority from the config.
+     */
+    private int getArmageddonTagIndex(ItemStack stack) {
+        List<AutoTierlistConfig.TagEntry> tagEntries = AutoTierlistConfig.getArmageddonTagEntries();
+
+        // Check each tag entry in order (this is the priority order)
+        for (int i = 0; i < tagEntries.size(); i++) {
+            AutoTierlistConfig.TagEntry entry = tagEntries.get(i);
+
+            // Check if the item has any of this entry's tags
+            for (var tagKey : entry.getTagKeys()) {
+                if (stack.is(tagKey)) {
+                    return i; // Return the index of this tag entry
+                }
+            }
+        }
+
+        // No Armageddon tags found, return -1 so this item appears first
+        return -1;
     }
 
     // Abstract methods that subclasses must implement
