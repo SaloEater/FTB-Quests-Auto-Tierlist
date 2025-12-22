@@ -1,5 +1,6 @@
 package com.saloeater.ftbquests_tierlists.autotierlist.analysis;
 
+import com.saloeater.ftbquests_tierlists.Tierlists;
 import com.saloeater.ftbquests_tierlists.autotierlist.config.ItemFilter;
 import com.google.common.collect.Multimap;
 import com.mojang.logging.LogUtils;
@@ -20,8 +21,6 @@ import java.util.List;
  * Scans all registered items and extracts weapon and armor data.
  */
 public class ItemScanner {
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     // Only scan chestplates for armor tierlist to avoid duplicates
     private static final EquipmentSlot ARMOR_SLOT = EquipmentSlot.CHEST;
 
@@ -61,15 +60,15 @@ public class ItemScanner {
                     attackSpeed = Attributes.ATTACK_SPEED.getDefaultValue() + attackSpeed;
                     damage = Attributes.ATTACK_DAMAGE.getDefaultValue() + damage;
                     weapons.add(new ItemData.WeaponData(itemId, stack, damage, attackSpeed));
-                    LOGGER.debug("Found weapon: {} (damage: {}, attack speed: {}, DPS: {})",
+                    Tierlists.LOGGER.debug("Found weapon: {} (damage: {}, attack speed: {}, DPS: {})",
                                itemId, damage, attackSpeed, damage * attackSpeed);
                 }
             } catch (Exception e) {
-                LOGGER.warn("Error scanning item {}: {}", item, e.getMessage());
+                Tierlists.LOGGER.warn("Error scanning item {}: {}", item, e.getMessage());
             }
         }
 
-        LOGGER.info("Scanned {} weapons", weapons.size());
+        Tierlists.LOGGER.info("Scanned {} weapons", weapons.size());
         return weapons;
     }
 
@@ -103,15 +102,15 @@ public class ItemScanner {
                 if (filter.isArmor(itemId, stack, armor > 0)) {
                     // If armor is 0 but item passed filter (tag/manual list), still need values
                     armors.add(new ItemData.ArmorData(itemId, stack, armor, toughness));
-                    LOGGER.debug("Found armor: {} (armor: {}, toughness: {})",
+                    Tierlists.LOGGER.debug("Found armor: {} (armor: {}, toughness: {})",
                                itemId, armor, toughness);
                 }
             } catch (Exception e) {
-                LOGGER.warn("Error scanning item {}: {}", item, e.getMessage());
+                Tierlists.LOGGER.warn("Error scanning item {}: {}", item, e.getMessage());
             }
         }
 
-        LOGGER.info("Scanned {} armor pieces", armors.size());
+        Tierlists.LOGGER.info("Scanned {} armor pieces", armors.size());
         return armors;
     }
 

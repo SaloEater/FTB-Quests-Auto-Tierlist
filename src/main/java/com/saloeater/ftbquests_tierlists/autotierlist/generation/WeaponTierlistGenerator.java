@@ -7,6 +7,7 @@ import com.saloeater.ftbquests_tierlists.autotierlist.config.AutoTierlistConfig;
 import com.saloeater.ftbquests_tierlists.autotierlist.config.ItemFilter;
 import com.saloeater.ftbquests_tierlists.autotierlist.config.TierOverrideManager;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
 
@@ -28,8 +29,8 @@ public class WeaponTierlistGenerator extends AbstractTierlistGenerator<ItemData.
     }
 
     @Override
-    protected String getChapterTitle() {
-        return Component.Serializer.toJson(Component.translatable(AutoTierlistConfig.WEAPON_CHAPTER_TITLE.get()));
+    protected MutableComponent getChapterTitle() {
+        return Component.translatable(AutoTierlistConfig.WEAPON_CHAPTER_TITLE.get());
     }
 
     @Override

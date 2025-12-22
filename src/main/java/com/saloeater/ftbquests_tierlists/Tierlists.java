@@ -12,7 +12,7 @@ import org.slf4j.Logger;
 public class Tierlists
 {
     public static final String MODID = "ftbquests_tierlists";
-    private static final Logger LOGGER = LogUtils.getLogger();
+    public static final Logger LOGGER = LogUtils.getLogger();
 
     public Tierlists(FMLJavaModLoadingContext context)
     {
@@ -22,6 +22,6 @@ public class Tierlists
         // Register Auto-Tierlist client config
         context.registerConfig(ModConfig.Type.CLIENT, AutoTierlistConfig.SPEC);
 
-        LOGGER.info("Auto-Tierlist module loaded (client-side)");
+        Tierlists.LOGGER.info("Auto-Tierlist module loaded (client-side)");
     }
 }

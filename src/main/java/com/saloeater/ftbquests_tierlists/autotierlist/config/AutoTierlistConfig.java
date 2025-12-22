@@ -3,6 +3,7 @@ package com.saloeater.ftbquests_tierlists.autotierlist.config;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.mojang.logging.LogUtils;
+import com.saloeater.ftbquests_tierlists.Tierlists;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -18,12 +19,11 @@ import java.util.List;
 
 @Mod.EventBusSubscriber(modid = "ftbquests_tierlists", bus = Mod.EventBusSubscriber.Bus.MOD)
 public class AutoTierlistConfig {
-    private static final Logger LOGGER = LogUtils.getLogger();
+    public final static Integer NO_INDEX_IN_CHAPTER_GROUP = -1;
 
     private static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
 
     // Generation settings
-    public static final ForgeConfigSpec.BooleanValue AUTO_GENERATE_ON_START;
     public static final ForgeConfigSpec.BooleanValue ENABLE_WEAPON_TIERLIST;
     public static final ForgeConfigSpec.BooleanValue ENABLE_ARMOR_TIERLIST;
 
@@ -52,6 +52,10 @@ public class AutoTierlistConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_EMI_CATEGORIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_ITEMS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends List<String>>> ARMAGEDDON_TAGS;
+    public static final ForgeConfigSpec.ConfigValue<String> CHAPTER_GROUP;
+    public static final ForgeConfigSpec.ConfigValue<String> INDEX_IN_CHAPTER_GROUP;
+    public static final ForgeConfigSpec.ConfigValue<String> WEAPON_CHAPTER_ICON;
+    public static final ForgeConfigSpec.ConfigValue<String> ARMOR_CHAPTER_ICON;
 
     // Constants (not from config)
     public static final double TIER_MULTIPLIER = 1.6;
@@ -59,11 +63,6 @@ public class AutoTierlistConfig {
 
     static {
         BUILDER.comment("Auto-Tierlist Configuration").push("autotierlist");
-
-        // Generation settings
-        AUTO_GENERATE_ON_START = BUILDER
-            .comment("Automatically generate tierlists when the server starts")
-            .define("autoGenerateOnStart", false);
 
         ENABLE_WEAPON_TIERLIST = BUILDER
             .comment("Enable weapon tierlist generation")
@@ -184,6 +183,22 @@ public class AutoTierlistConfig {
                                  () -> List.of(),
                                  obj -> obj instanceof String);
 
+        CHAPTER_GROUP = BUILDER
+            .comment("Optional group ID to assign generated chapters to")
+                .define("chapter_group", "");
+
+        INDEX_IN_CHAPTER_GROUP = BUILDER
+            .comment("Optional index within the chapter group to insert generated chapters at. Empty value means quests would be last")
+                .define("index_in_chapter_group", "");
+
+        WEAPON_CHAPTER_ICON = BUILDER
+            .comment("Icon for the weapon chapter (modid:itemname)")
+                .define("weapon_chapter_icon", "minecraft:diamond_sword");
+
+        ARMOR_CHAPTER_ICON = BUILDER
+            .comment("Icon for the armor chapter (modid:itemname)")
+                .define("armor_chapter_icon", "minecraft:diamond_chestplate");
+
         // Load defaults from JSON
         List<List<String>> defaultTags = new ArrayList<>();
 
@@ -198,23 +213,21 @@ public class AutoTierlistConfig {
                         String label = tagObj.get("label").getAsString();
                         String color = tagObj.get("color").getAsString();
                         String headerItem = tagObj.has("header_item") ? tagObj.get("header_item").getAsString() : "";
-                        String headerTitle = tagObj.has("header_title") ? tagObj.get("header_title").getAsString() : "";
+                        String headerTitle = tagObj.has("advancement") ? tagObj.get("advancement").getAsString() : "";
 
                         defaultTags.add(Arrays.asList(tag, label, color, headerItem, headerTitle));
                     });
                 }
-                LOGGER.info("Loaded {} default tag entries from armageddontags_tierlist.json", defaultTags.size());
+                Tierlists.LOGGER.info("Loaded {} default tag entries from armageddontags_tierlist.json", defaultTags.size());
             }
         } catch (Exception e) {
-            LOGGER.error("Failed to load defaults from armageddontags_tierlist.json", e);
+            Tierlists.LOGGER.error("Failed to load defaults from armageddontags_tierlist.json", e);
         }
 
         ARMAGEDDON_TAGS = BUILDER
-                .comment("List of tag entries. Format: [tags, label letter, color, header_item, header_title]",
+                .comment("List of tag entries. Format: [tags, label letter, color, header_item, advancement]",
                         "Tags can be comma-separated for multiple tags",
-                        "header_item: Item ID to use for header quest (optional, empty string to skip)",
-                        "header_title: Translatable key for header quest title (optional, empty string to skip)",
-                        "Example: [\"forge:diamond_tools,minecraft:swords\", \"D\", \"c\", \"minecraft:diamond\", \"advancements.the_diamond_keeper.descr\"]")
+                        "Example: [\"forge:diamond_tools,minecraft:swords\", \"D\", \"c\", \"minecraft:diamond\", \"advancements.the_diamond_keeper\"]")
                 .defineList("tags", defaultTags, obj -> {
                     if (!(obj instanceof List)) return false;
                     List<?> list = (List<?>) obj;
@@ -232,12 +245,36 @@ public class AutoTierlistConfig {
         for (List<String> entry : ARMAGEDDON_TAGS.get()) {
             if (entry.size() >= 3) {
                 String headerItem = entry.size() >= 5 ? entry.get(3) : "";
-                String headerTitle = entry.size() >= 5 ? entry.get(4) : "";
-                entries.add(new TagEntry(entry.get(0), entry.get(1).charAt(0), entry.get(2).charAt(0), headerItem, headerTitle));
+                String advancement = entry.size() >= 5 ? entry.get(4) : "";
+                entries.add(new TagEntry(entry.get(0), entry.get(1).charAt(0), entry.get(2).charAt(0), headerItem, advancement));
             }
         }
 
         return entries;
+    }
+
+    public static Integer GetIndexInChapterGroup() {
+        String indexStr = INDEX_IN_CHAPTER_GROUP.get();
+        if (indexStr.isEmpty()) {
+            return NO_INDEX_IN_CHAPTER_GROUP;
+        }
+        try {
+            return Math.max(0, Integer.parseInt(indexStr));
+        } catch (NumberFormatException e) {
+            Logger logger = LogUtils.getLogger();
+            logger.error("Invalid index_in_chapter_group value: {}", indexStr);
+            return NO_INDEX_IN_CHAPTER_GROUP;
+        }
+    }
+
+    public static ResourceLocation GetWeaponChapterIcon() {
+        var icon   = WEAPON_CHAPTER_ICON.get();
+        return icon.isEmpty() ? new ResourceLocation("minecraft:diamond_sword") : new ResourceLocation(icon);
+    }
+
+    public static ResourceLocation GetArmorChapterIcon() {
+        var icon   = ARMOR_CHAPTER_ICON.get();
+        return icon.isEmpty() ? new ResourceLocation("minecraft:diamond_chestplate") : new ResourceLocation(icon);
     }
 
     public static class TagEntry {
@@ -246,14 +283,14 @@ public class AutoTierlistConfig {
         private final char label;
         private final char color;
         private final String headerItem;
-        private final String headerTitle;
+        private final String advancement;
 
-        public TagEntry(String tag, char label, char color, String headerItem, String headerTitle) {
+        public TagEntry(String tag, char label, char color, String headerItem, String advancement) {
             this.tagLine = tag;
             this.label = label;
             this.color = color;
             this.headerItem = headerItem;
-            this.headerTitle = headerTitle;
+            this.advancement = advancement;
 
             // Parse comma-separated tags
             this.tags = new ArrayList<>();
@@ -263,22 +300,6 @@ public class AutoTierlistConfig {
                     this.tags.add(trimmed);
                 }
             }
-        }
-
-        public String getTagLine() {
-            return tagLine;
-        }
-
-        public List<String> getTags() {
-            return tags;
-        }
-
-        public List<ResourceLocation> getTagLocations() {
-            List<ResourceLocation> locations = new ArrayList<>();
-            for (String t : tags) {
-                locations.add(new ResourceLocation(t));
-            }
-            return locations;
         }
 
         public char getLabel() {
@@ -297,16 +318,16 @@ public class AutoTierlistConfig {
             return tagKeys;
         }
 
-        public String getHeaderItem() {
-            return headerItem;
+        public ResourceLocation getHeaderItem() {
+            return new ResourceLocation(headerItem);
         }
 
-        public String getHeaderTitle() {
-            return headerTitle;
+        public ResourceLocation getAdvancement() {
+            return new ResourceLocation(advancement);
         }
 
         public boolean hasHeader() {
-            return !headerItem.isEmpty() && !headerTitle.isEmpty();
+            return !headerItem.isEmpty() && !advancement.isEmpty();
         }
     }
 }

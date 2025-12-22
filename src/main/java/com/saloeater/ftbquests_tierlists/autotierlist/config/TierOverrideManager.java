@@ -1,6 +1,7 @@
 package com.saloeater.ftbquests_tierlists.autotierlist.config;
 
 import com.mojang.logging.LogUtils;
+import com.saloeater.ftbquests_tierlists.Tierlists;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraftforge.registries.ForgeRegistries;
 import org.slf4j.Logger;
@@ -11,8 +12,6 @@ import java.util.Map;
 import java.util.Optional;
 
 public class TierOverrideManager {
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final Map<ResourceLocation, Integer> weaponOverrides = new HashMap<>();
     private final Map<ResourceLocation, Integer> armorOverrides = new HashMap<>();
 
@@ -34,7 +33,7 @@ public class TierOverrideManager {
                 // Format: "modid:itemname=tier"
                 String[] parts = override.split("=");
                 if (parts.length != 2) {
-                    LOGGER.warn("Invalid {} tier override format (expected 'modid:item=tier'): {}", type, override);
+                    Tierlists.LOGGER.warn("Invalid {} tier override format (expected 'modid:item=tier'): {}", type, override);
                     continue;
                 }
 
@@ -43,25 +42,25 @@ public class TierOverrideManager {
 
                 // Validate that the item exists
                 if (!ForgeRegistries.ITEMS.containsKey(itemId)) {
-                    LOGGER.warn("Item '{}' not found in registry, skipping {} tier override", itemId, type);
+                    Tierlists.LOGGER.warn("Item '{}' not found in registry, skipping {} tier override", itemId, type);
                     continue;
                 }
 
                 // Validate tier is non-negative
                 if (tier < 0) {
-                    LOGGER.warn("Tier must be non-negative for {}: {} (got {})", type, itemId, tier);
+                    Tierlists.LOGGER.warn("Tier must be non-negative for {}: {} (got {})", type, itemId, tier);
                     continue;
                 }
 
                 targetMap.put(itemId, tier);
-                LOGGER.debug("Loaded {} tier override: {} = tier {}", type, itemId, tier);
+                Tierlists.LOGGER.debug("Loaded {} tier override: {} = tier {}", type, itemId, tier);
 
             } catch (Exception e) {
-                LOGGER.warn("Failed to parse {} tier override '{}': {}", type, override, e.getMessage());
+                Tierlists.LOGGER.warn("Failed to parse {} tier override '{}': {}", type, override, e.getMessage());
             }
         }
 
-        LOGGER.info("Loaded {} {} tier overrides", targetMap.size(), type);
+        Tierlists.LOGGER.info("Loaded {} {} tier overrides", targetMap.size(), type);
     }
 
     public Optional<Integer> getWeaponOverride(ResourceLocation itemId) {

@@ -1,5 +1,6 @@
 package com.saloeater.ftbquests_tierlists.autotierlist.integration;
 
+import com.saloeater.ftbquests_tierlists.Tierlists;
 import com.saloeater.ftbquests_tierlists.autotierlist.config.AutoTierlistConfig;
 import com.mojang.logging.LogUtils;
 import dev.emi.emi.api.EmiApi;
@@ -19,7 +20,6 @@ import java.util.*;
  * EMI provides access to all recipe types including vanilla and modded recipes.
  */
 public class EMIIntegration {
-    private static final Logger LOGGER = LogUtils.getLogger();
     private static EmiRecipeManager recipeManager = null;
 
     /**
@@ -29,9 +29,9 @@ public class EMIIntegration {
     public static void initialize() {
         try {
             recipeManager = EmiApi.getRecipeManager();
-            LOGGER.info("EMI integration initialized successfully");
+            Tierlists.LOGGER.info("EMI integration initialized successfully");
         } catch (Exception e) {
-            LOGGER.error("Failed to initialize EMI integration", e);
+            Tierlists.LOGGER.error("Failed to initialize EMI integration", e);
             recipeManager = null;
         }
     }
@@ -61,7 +61,7 @@ public class EMIIntegration {
             List<ResourceLocation> relevantItems) {
 
         if (!isAvailable()) {
-            LOGGER.warn("EMI not available, cannot query recipes");
+            Tierlists.LOGGER.warn("EMI not available, cannot query recipes");
             return new HashMap<>();
         }
 
@@ -73,7 +73,7 @@ public class EMIIntegration {
         // Log skipped categories
         List<? extends String> skippedCategories = AutoTierlistConfig.SKIPPED_EMI_CATEGORIES.get();
         if (!skippedCategories.isEmpty()) {
-            LOGGER.info("Skipping EMI recipe categories: {}", String.join(", ", skippedCategories));
+            Tierlists.LOGGER.info("Skipping EMI recipe categories: {}", String.join(", ", skippedCategories));
         }
 
         try {
@@ -100,9 +100,9 @@ public class EMIIntegration {
                 }
             }
 
-            LOGGER.info("EMI recipe lookup found {} recipes with relevant ingredients", recipeGraph.size());
+            Tierlists.LOGGER.info("EMI recipe lookup found {} recipes with relevant ingredients", recipeGraph.size());
         } catch (Exception e) {
-            LOGGER.error("Error during EMI recipe lookup", e);
+            Tierlists.LOGGER.error("Error during EMI recipe lookup", e);
         }
 
         return recipeGraph;
@@ -173,7 +173,7 @@ public class EMIIntegration {
                 }
             }
         } catch (Exception e) {
-            LOGGER.debug("Error extracting ingredients from recipe: {}", e.getMessage());
+            Tierlists.LOGGER.debug("Error extracting ingredients from recipe: {}", e.getMessage());
         }
     }
 }

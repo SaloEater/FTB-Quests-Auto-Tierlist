@@ -1,5 +1,6 @@
 package com.saloeater.ftbquests_tierlists.autotierlist.progression;
 
+import com.saloeater.ftbquests_tierlists.Tierlists;
 import com.saloeater.ftbquests_tierlists.autotierlist.integration.EMIIntegration;
 import com.saloeater.ftbquests_tierlists.autotierlist.mixin.SmithingTransformRecipeAccessor;
 import com.mojang.logging.LogUtils;
@@ -21,8 +22,6 @@ import java.util.*;
  * across all recipe types. Falls back to vanilla RecipeManager if JEI is not present.
  */
 public class CraftingChainDetector {
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final RecipeManager recipeManager;
 
     public CraftingChainDetector(RecipeManager recipeManager) {
@@ -89,7 +88,7 @@ public class CraftingChainDetector {
             }
         }
 
-        LOGGER.info("Detected {} progression columns from {} items", groups.size(), items.size());
+        Tierlists.LOGGER.info("Detected {} progression columns from {} items", groups.size(), items.size());
         return columnAssignments;
     }
 
@@ -105,12 +104,12 @@ public class CraftingChainDetector {
     private Map<ResourceLocation, Set<ResourceLocation>> buildRecipeGraph(List<ResourceLocation> relevantItems) {
         // Try EMI first for comprehensive recipe coverage
         if (EMIIntegration.isAvailable()) {
-            LOGGER.info("Using EMI for recipe graph (all recipe types)");
+            Tierlists.LOGGER.info("Using EMI for recipe graph (all recipe types)");
             return buildRecipeGraphWithEMI(relevantItems);
         }
 
         // Fallback to vanilla RecipeManager (crafting and smithing recipes only)
-        LOGGER.info("Using vanilla RecipeManager for recipe graph (crafting and smithing recipes only)");
+        Tierlists.LOGGER.info("Using vanilla RecipeManager for recipe graph (crafting and smithing recipes only)");
         return buildRecipeGraphVanilla(relevantItems);
     }
 
@@ -121,10 +120,10 @@ public class CraftingChainDetector {
     private Map<ResourceLocation, Set<ResourceLocation>> buildRecipeGraphWithEMI(List<ResourceLocation> relevantItems) {
         try {
             Map<ResourceLocation, Set<ResourceLocation>> graph = EMIIntegration.getRecipesUsingItemAsIngredient(relevantItems);
-            LOGGER.info("Built EMI recipe graph with {} entries", graph.size());
+            Tierlists.LOGGER.info("Built EMI recipe graph with {} entries", graph.size());
             return graph;
         } catch (Exception e) {
-            LOGGER.error("Error building EMI recipe graph, falling back to vanilla", e);
+            Tierlists.LOGGER.error("Error building EMI recipe graph, falling back to vanilla", e);
             return buildRecipeGraphVanilla(relevantItems);
         }
     }
@@ -148,10 +147,10 @@ public class CraftingChainDetector {
                 processRecipe(recipe, relevantSet, graph);
             }
         } catch (Exception e) {
-            LOGGER.error("Error building vanilla recipe graph", e);
+            Tierlists.LOGGER.error("Error building vanilla recipe graph", e);
         }
 
-        LOGGER.info("Built vanilla recipe graph with {} entries", graph.size());
+        Tierlists.LOGGER.info("Built vanilla recipe graph with {} entries", graph.size());
         return graph;
     }
 
@@ -191,7 +190,7 @@ public class CraftingChainDetector {
             }
 
         } catch (Exception e) {
-            LOGGER.debug("Error processing recipe {}: {}", recipe.getId(), e.getMessage());
+            Tierlists.LOGGER.debug("Error processing recipe {}: {}", recipe.getId(), e.getMessage());
         }
     }
 

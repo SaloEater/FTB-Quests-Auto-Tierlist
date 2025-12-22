@@ -14,8 +14,6 @@
   "ftbquests_tierlists.command.autotierlist.dump.starting": "§e[Auto-Tierlist] Scanning for excluded weapons...",
   "ftbquests_tierlists.command.autotierlist.dump.complete": "§a[Auto-Tierlist] Dumped %s excluded weapons to: %s",
   "ftbquests_tierlists.command.autotierlist.dump.failed": "§c[Auto-Tierlist] Failed to dump: %s",
-  "ftbquests_tierlists.command.autotierlist.mode.crafting": "crafting progression mode",
-  "ftbquests_tierlists.command.autotierlist.mode.tier": "tier progression mode",
   "ftbquests_tierlists.command.autotierlist.help.header": "§6=== Auto-Tierlist Commands (Client) ===",
   "ftbquests_tierlists.command.autotierlist.help.generate": "§e/autotierlist generate <mode> §7- Generate tierlists",
   "ftbquests_tierlists.command.autotierlist.help.generate.crafting": "  §7- crafting_progression: Align by crafting chains",
@@ -23,5 +21,7 @@
   "ftbquests_tierlists.command.autotierlist.help.clear": "§e/autotierlist clear §7- Remove generated tierlist chapters",
   "ftbquests_tierlists.command.autotierlist.help.dump": "§e/autotierlist dump_excluded_weapons §7- Export excluded weapons to file",
   "ftbquests_tierlists.command.autotierlist.help.config": "§7Config: §fconfig/ftbquests_tierlists-client.toml",
-  "ftbquests_tierlists.command.autotierlist.help.note": "§c§oNote: These commands only work in single-player worlds"
+  "ftbquests_tierlists.command.autotierlist.help.note": "§c§oNote: These commands only work in single-player worlds",
+  "ftbquests_tierlists.chapter.title.mode.crafting_progression": "Crafting",
+  "ftbquests_tierlists.chapter.title.mode.tiered_progression": "Tiered"
 }

@@ -1,5 +1,6 @@
 package com.saloeater.ftbquests_tierlists.autotierlist.generation;
 
+import com.saloeater.ftbquests_tierlists.Tierlists;
 import com.saloeater.ftbquests_tierlists.autotierlist.progression.CraftingChainDetector;
 import com.mojang.logging.LogUtils;
 import net.minecraft.resources.ResourceLocation;
@@ -12,8 +13,6 @@ import java.util.stream.Collectors;
  * Helper class for progression mode column assignment and chain building.
  */
 public class ProgressionHelper {
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     /**
      * Assign column numbers for progression mode.
      * Items with no dependencies and never used as dependencies go left (sequential).
@@ -133,7 +132,7 @@ public class ProgressionHelper {
             nextColumn = maxColumnUsed + 1;
         }
 
-        LOGGER.info("Assigned {} items to {} progression chains",
+        Tierlists.LOGGER.info("Assigned {} items to {} progression chains",
             columnAssignments.size(),
             chains.size());
 

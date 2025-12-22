@@ -1,6 +1,7 @@
 package com.saloeater.ftbquests_tierlists.autotierlist.generation;
 
 import com.mojang.logging.LogUtils;
+import com.saloeater.ftbquests_tierlists.Tierlists;
 import net.minecraft.resources.ResourceLocation;
 import org.slf4j.Logger;
 
@@ -15,7 +16,6 @@ import java.util.stream.Collectors;
  * @param <T> The item data type (weapon or armor)
  */
 public class GroupLayoutCalculator<T> {
-    private static final Logger LOGGER = LogUtils.getLogger();
     public static final int PROGRESSION_SPACING = 1;
     public static final int TIER_SPACING = 2;
 
@@ -69,7 +69,7 @@ public class GroupLayoutCalculator<T> {
             nextStartColumn = maxColumn + 1 + groupSpacing;
         }
 
-        LOGGER.info("Calculated layout for {} groups", groups.size());
+        Tierlists.LOGGER.info("Calculated layout for {} groups", groups.size());
     }
 
     /**

@@ -1,22 +1,31 @@
 package com.saloeater.ftbquests_tierlists.autotierlist.generation;
 
+import com.saloeater.ftbquests_tierlists.Tierlists;
 import com.saloeater.ftbquests_tierlists.autotierlist.config.AutoTierlistConfig;
 import com.github.elenterius.biomancy.tooltip.EmptyLineTooltipComponent;
 import com.mojang.logging.LogUtils;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ConfigValue;
+import dev.ftb.mods.ftblibrary.config.ConfigWithVariants;
+import dev.ftb.mods.ftblibrary.util.KnownServerRegistries;
 import dev.ftb.mods.ftbquests.quest.Chapter;
 import dev.ftb.mods.ftbquests.quest.Quest;
 import dev.ftb.mods.ftbquests.quest.ServerQuestFile;
+import dev.ftb.mods.ftbquests.quest.task.AdvancementTask;
 import dev.ftb.mods.ftbquests.quest.task.CheckmarkTask;
 import dev.ftb.mods.ftbquests.quest.task.ItemTask;
 import net.minecraft.ChatFormatting;
+import net.minecraft.advancements.Advancement;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientAdvancements;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentContents;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -160,18 +169,18 @@ public class QuestFactory {
     }
 
     /**
-     * Create a header quest for a tag group with a translatable title.
+     * Create a header quest for a tag group with a translatable title and advancement task.
      *
      * @param questFile The quest file
      * @param chapter The parent chapter
-     * @param itemId The item ID to use for the task
-     * @param titleKey The translatable title key
+     * @param itemId The item ID to use for the icon
+     * @param advancementId The translatable title key
      * @param x X coordinate
      * @param y Y coordinate
      * @return The created quest
      */
     public static Quest createHeaderQuest(ServerQuestFile questFile, Chapter chapter,
-                                          ResourceLocation itemId, String titleKey,
+                                          ResourceLocation itemId, ResourceLocation advancementId,
                                           double x, double y) {
         // Create quest
         long questId = questFile.newID();
@@ -181,19 +190,35 @@ public class QuestFactory {
         quest.setX(x);
         quest.setY(y);
 
-        // Set translatable title
-        quest.setRawTitle("{\"translate\":\"" + titleKey + "\"}");
+        Item item = ForgeRegistries.ITEMS.getValue(itemId);
 
-        // Create item task (display only, not consumable)
-        net.minecraft.world.item.Item item = net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(itemId);
+        var advancement = getAdvancement(advancementId);
+        if (advancement != null) {
+            quest.setRawTitle(Component.Serializer.toJson(advancement.getDisplay().getTitle()));
+            quest.setRawSubtitle(Component.Serializer.toJson(advancement.getDisplay().getDescription()));
+        }
+
+        long taskId = questFile.newID();
+        AdvancementTask task = new AdvancementTask(taskId, quest);
+
+        // Set advancement and rawIcon using ConfigGroup
+        ConfigGroup taskConfigGroup = new ConfigGroup("");
+        task.fillConfigGroup(taskConfigGroup);
+
+        for (var value : taskConfigGroup.getValues()) {
+            if (value.id.equals("advancement")) {
+                ConfigWithVariants<ResourceLocation> advVal = (ConfigWithVariants<ResourceLocation>) value;
+                advVal.setCurrentValue(advancementId);
+                advVal.applyValue();
+            }
+        }
+
         if (item != null) {
             ItemStack stack = new ItemStack(item);
-            long taskId = questFile.newID();
-            ItemTask task = new ItemTask(taskId, quest);
-            task.setStackAndCount(stack, 1);
-            task.setConsumeItems(dev.ftb.mods.ftblibrary.config.Tristate.FALSE);
-            task.onCreated();
+            task.setRawIcon(stack);
         }
+
+        task.onCreated();
 
         // Set quest size using ConfigGroup
         ConfigGroup group = new ConfigGroup("");
@@ -211,5 +236,10 @@ public class QuestFactory {
         quest.onCreated();
 
         return quest;
+    }
+
+    private static Advancement getAdvancement(ResourceLocation advancementId) {
+        ClientAdvancements advancements = Minecraft.getInstance().player.connection.getAdvancements();
+        return advancements.getAdvancements().get(advancementId);
     }
 }

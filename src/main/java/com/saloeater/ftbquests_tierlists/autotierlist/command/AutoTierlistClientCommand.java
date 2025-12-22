@@ -4,18 +4,13 @@ import com.saloeater.ftbquests_tierlists.autotierlist.generation.TierlistGenerat
 import com.saloeater.ftbquests_tierlists.autotierlist.integration.EMIIntegration;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
-import com.mojang.brigadier.context.CommandContextBuilder;
-import dev.ftb.mods.ftbquests.command.FTBQuestsCommands;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.commands.CommandRuntimeException;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.entity.player.Player;
 
 
 /**
@@ -30,21 +25,7 @@ public class AutoTierlistClientCommand {
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("autotierlist")
             .then(Commands.literal("generate")
-                .then(Commands.argument("mode", StringArgumentType.word())
-                    .suggests((context, builder) -> {
-                        builder.suggest("crafting_progression");
-                        builder.suggest("tier_progression");
-                        return builder.buildFuture();
-                    })
-                    .executes(ctx -> {
-                        String mode = StringArgumentType.getString(ctx, "mode");
-                        if (mode.equals("crafting_progression")) {
-                            return generateCraftingProgression(ctx);
-                        } else if (mode.equals("tier_progression")) {
-                            return generate(ctx);
-                        }
-                        throw new CommandRuntimeException(Component.translatable("ftbquests_tierlists.command.autotierlist.invalid_mode"));
-                    })))
+                .executes(AutoTierlistClientCommand::generate))
             .then(Commands.literal("clear")
                 .executes(AutoTierlistClientCommand::clear))
             .then(Commands.literal("dump_excluded_weapons")
@@ -90,32 +71,19 @@ public class AutoTierlistClientCommand {
      * Generate tierlists (default - tier progression mode).
      */
     private static int generate(CommandContext<CommandSourceStack> context) {
-        return generateWithMode(context, false);
-    }
-
-    /**
-     * Generate tierlists (crafting progression mode).
-     */
-    private static int generateCraftingProgression(CommandContext<CommandSourceStack> context) {
-        return generateWithMode(context, true);
+        return generateWithMode(context);
     }
 
     /**
      * Generate tierlists with specified progression mode.
      */
-    private static int generateWithMode(CommandContext<CommandSourceStack> context, boolean enableCraftingProgression) {
+    private static int generateWithMode(CommandContext<CommandSourceStack> context) {
         MinecraftServer server = getIntegratedServer(context);
         if (server == null) {
             return 0;
         }
 
         try {
-            String modeKey = enableCraftingProgression ? "ftbquests_tierlists.command.autotierlist.mode.crafting" : "ftbquests_tierlists.command.autotierlist.mode.tier";
-            context.getSource().sendSuccess(
-                () -> Component.translatable("ftbquests_tierlists.command.autotierlist.generate.starting", Component.translatable(modeKey)),
-                true
-            );
-
             // Initialize EMI integration
             EMIIntegration.initialize();
 
@@ -123,7 +91,7 @@ public class AutoTierlistClientCommand {
             server.execute(() -> {
                 try {
                     TierlistGenerator generator = new TierlistGenerator();
-                    generator.generateAll(server, enableCraftingProgression);
+                    generator.generateAll(server);
 
                     context.getSource().sendSuccess(
                         () -> Component.translatable("ftbquests_tierlists.command.autotierlist.generate.complete"),

@@ -1,20 +1,22 @@
 package com.saloeater.ftbquests_tierlists.autotierlist.generation;
 
+import com.saloeater.ftbquests_tierlists.Tierlists;
 import com.saloeater.ftbquests_tierlists.autotierlist.analysis.ItemScanner;
 import com.saloeater.ftbquests_tierlists.autotierlist.analysis.TierCalculator;
 import com.saloeater.ftbquests_tierlists.autotierlist.config.AutoTierlistConfig;
 import com.saloeater.ftbquests_tierlists.autotierlist.config.ItemFilter;
 import com.saloeater.ftbquests_tierlists.autotierlist.config.TierOverrideManager;
 import com.saloeater.ftbquests_tierlists.autotierlist.progression.CraftingChainDetector;
-import com.mojang.logging.LogUtils;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ConfigValue;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftbquests.quest.*;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
-import org.slf4j.Logger;
+import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -26,8 +28,6 @@ import java.util.stream.Collectors;
  * @param <T> The item data type (WeaponData or ArmorData)
  */
 public abstract class AbstractTierlistGenerator<T> {
-    protected static final Logger LOGGER = LogUtils.getLogger();
-
     protected final TierOverrideManager overrideManager;
     protected final Map<ResourceLocation, Quest> itemToQuestMap = new HashMap<>();
 
@@ -35,29 +35,22 @@ public abstract class AbstractTierlistGenerator<T> {
         this.overrideManager = overrideManager;
     }
 
-    /**
-     * Generate the tierlist chapter using the 3-phase pipeline.
-     *
-     * @param questFile The quest file
-     * @param level The server level
-     * @param enableProgressionAlignment Whether to enable progression-based alignment
-     */
-    public void generate(ServerQuestFile questFile, ServerLevel level, boolean enableProgressionAlignment) {
-        LOGGER.info("Generating {} tierlist (progression: {})...", getItemTypeName(), enableProgressionAlignment);
+    public void generate(ServerQuestFile questFile, ServerLevel level, boolean enableProgressionAlignment, ResourceLocation chapterIconItemId) {
+        Tierlists.LOGGER.info("Generating {} tierlist (progression: {})...", getItemTypeName(), enableProgressionAlignment);
 
         try {
             // 1. Create and configure item filter
             ItemFilter filter = new ItemFilter(AutoTierlistConfig.USE_ATTRIBUTE_DETECTION.get());
             filter.loadSkippedItems(AutoTierlistConfig.SKIPPED_ITEMS.get());
             configureFilter(filter);
-            LOGGER.info("Item filter configured: {}", filter.getStats());
+            Tierlists.LOGGER.info("Item filter configured: {}", filter.getStats());
 
             // 2. Scan for items
             ItemScanner scanner = new ItemScanner(filter);
             List<T> items = scanItems(scanner);
 
             if (items.isEmpty()) {
-                LOGGER.warn("No {} found, skipping tierlist generation", getItemTypeName());
+                Tierlists.LOGGER.warn("No {} found, skipping tierlist generation", getItemTypeName());
                 return;
             }
 
@@ -93,9 +86,9 @@ public abstract class AbstractTierlistGenerator<T> {
                         .map(this::getItemId)
                         .collect(Collectors.toList());
                     recipeGraph = detector.getRecipeGraph(itemIds);
-                    LOGGER.info("Detected {} recipe relationships", recipeGraph.size());
+                    Tierlists.LOGGER.info("Detected {} recipe relationships", recipeGraph.size());
                 } catch (Exception e) {
-                    LOGGER.error("Failed to detect progression chains, continuing without progression alignment", e);
+                    Tierlists.LOGGER.error("Failed to detect progression chains, continuing without progression alignment", e);
                 }
             }
 
@@ -123,15 +116,38 @@ public abstract class AbstractTierlistGenerator<T> {
 
             // === PHASE 3: Generate quests ===
             // 5. Create chapter
-            ChapterGroup defaultGroup = questFile.getDefaultChapterGroup();
-            if (defaultGroup == null) {
-                LOGGER.error("No default chapter group found!");
+            ChapterGroup chapterGroup = questFile.getDefaultChapterGroup();
+            if (chapterGroup == null) {
+                Tierlists.LOGGER.error("No default chapter group found!");
                 return;
             }
 
-            Chapter chapter = new Chapter(questFile.newID(), questFile, defaultGroup, getChapterId());
-            chapter.setRawTitle(getChapterTitle());
+            var chapterGroupId = AutoTierlistConfig.CHAPTER_GROUP.get();
+            if (!chapterGroupId.isEmpty()) {
+                for (ChapterGroup cg : questFile.getChapterGroups()) {
+                    if (cg.getCodeString().equals(chapterGroupId)) {
+                        chapterGroup = cg;
+                        break;
+                    }
+                }
+            }
+
+            Chapter chapter = new Chapter(questFile.newID(), questFile, chapterGroup, getModeChapterId(enableProgressionAlignment));
+            chapter.setRawTitle(getModeChapterTitle(enableProgressionAlignment));
+            var item = ForgeRegistries.ITEMS.getValue(chapterIconItemId);
+            if (item != null) {
+                chapter.setRawIcon(new ItemStack(item));
+            }
             chapter.onCreated();
+            var targetIndex = AutoTierlistConfig.GetIndexInChapterGroup();
+            if (!targetIndex.equals(AutoTierlistConfig.NO_INDEX_IN_CHAPTER_GROUP)) {
+                var currentIndex = chapter.getIndex();
+                var indexChange = currentIndex - targetIndex;
+                while (indexChange > 0 && chapter.getIndex() > 0) {
+                    chapterGroup.moveChapterWithinGroup(chapter, true);
+                    indexChange--;
+                }
+            }
 
             // 6. Generate quests for each tier
             List<Integer> sortedTiers = new ArrayList<>(tiers.keySet());
@@ -152,13 +168,25 @@ public abstract class AbstractTierlistGenerator<T> {
                 createQuestDependencies(recipeGraph);
             }
 
-            LOGGER.info("{} tierlist generated successfully with {} tiers and {} groups",
+            Tierlists.LOGGER.info("{} tierlist generated successfully with {} tiers and {} groups",
                 getItemTypeName(), tiers.size(), groups.size());
 
         } catch (Exception e) {
-            LOGGER.error("Failed to generate {} tierlist", getItemTypeName(), e);
+            Tierlists.LOGGER.error("Failed to generate {} tierlist", getItemTypeName(), e);
             throw new RuntimeException(getItemTypeName() + " tierlist generation failed", e);
         }
+    }
+
+    private String getModeChapterId(boolean enableProgressionAlignment) {
+        String baseId = getChapterId();
+        return enableProgressionAlignment ? baseId + "_progression" : baseId + "_tiered";
+    }
+
+    private String getModeChapterTitle(boolean enableProgressionAlignment) {
+        var modeTitle = enableProgressionAlignment
+            ? "ftbquests_tierlists.chapter.title.mode.crafting_progression"
+            : "ftbquests_tierlists.chapter.title.mode.tiered_progression";
+        return Component.Serializer.toJson(Component.translatable(modeTitle).append(" ").append(getChapterTitle()));
     }
 
     /**
@@ -325,18 +353,17 @@ public abstract class AbstractTierlistGenerator<T> {
             double centerColumn = (minColumn + maxColumn) / 2.0;
             double headerX = centerColumn * AutoTierlistConfig.QUEST_SPACING_X.get();
 
-            // Create header quest with 3x3 size
-            ResourceLocation headerItemId = new ResourceLocation(tagEntry.getHeaderItem());
+            // Create header quest with 3x3 size and advancement task
             QuestFactory.createHeaderQuest(
                 questFile,
                 chapter,
-                headerItemId,
-                tagEntry.getHeaderTitle(),
+                tagEntry.getHeaderItem(),
+                tagEntry.getAdvancement(),
                 headerX,
                 headerY
             );
 
-            LOGGER.info("Created header quest for tag group '{}' at ({}, {}) (columns {}-{})",
+            Tierlists.LOGGER.info("Created header quest for tag group '{}' at ({}, {}) (columns {}-{})",
                 tagEntry.getLabel(), headerX, headerY, minColumn, maxColumn);
         }
     }
@@ -368,7 +395,7 @@ public abstract class AbstractTierlistGenerator<T> {
                     List<ResourceLocation> cyclePath = findCyclePath(outputQuest, ingredientQuest, questDependencies);
                     if (cyclePath != null) {
                         String cycleStr = String.join(" -> ", cyclePath.stream().map(ResourceLocation::toString).toList());
-                        LOGGER.warn("Skipping dependency {} -> {} to avoid circular dependency. Cycle: {} -> {}",
+                        Tierlists.LOGGER.warn("Skipping dependency {} -> {} to avoid circular dependency. Cycle: {} -> {}",
                                   ingredientItem, outputItem, cycleStr, ingredientItem);
                         skippedCycles++;
                         continue;
@@ -378,16 +405,16 @@ public abstract class AbstractTierlistGenerator<T> {
                         outputQuest.addDependency(ingredientQuest);
                         questDependencies.computeIfAbsent(outputQuest, k -> new HashSet<>()).add(ingredientQuest);
                         dependenciesCreated++;
-                        LOGGER.debug("Added dependency: {} -> {}", ingredientItem, outputItem);
+                        Tierlists.LOGGER.debug("Added dependency: {} -> {}", ingredientItem, outputItem);
                     } catch (Exception e) {
-                        LOGGER.warn("Failed to add dependency {} -> {}: {}",
+                        Tierlists.LOGGER.warn("Failed to add dependency {} -> {}: {}",
                                   ingredientItem, outputItem, e.getMessage());
                     }
                 }
             }
         }
 
-        LOGGER.info("Created {} quest dependencies ({} skipped to avoid cycles)",
+        Tierlists.LOGGER.info("Created {} quest dependencies ({} skipped to avoid cycles)",
                    dependenciesCreated, skippedCycles);
     }
 
@@ -495,7 +522,7 @@ public abstract class AbstractTierlistGenerator<T> {
     /**
      * Get the chapter title for this tierlist type.
      */
-    protected abstract String getChapterTitle();
+    protected abstract MutableComponent getChapterTitle();
 
     /**
      * Get the item type name for logging (e.g., "weapons" or "armor").

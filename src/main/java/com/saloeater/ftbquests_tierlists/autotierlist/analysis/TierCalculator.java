@@ -1,5 +1,6 @@
 package com.saloeater.ftbquests_tierlists.autotierlist.analysis;
 
+import com.saloeater.ftbquests_tierlists.Tierlists;
 import com.saloeater.ftbquests_tierlists.autotierlist.config.TierOverrideManager;
 import com.mojang.logging.LogUtils;
 import org.slf4j.Logger;
@@ -10,8 +11,6 @@ import java.util.*;
  * Calculates tier assignments for weapons and armor based on their attributes.
  */
 public class TierCalculator {
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final double tierMultiplier;
     private final int rowsPerTier;
     private final TierOverrideManager overrideManager;
@@ -49,7 +48,7 @@ public class TierCalculator {
                 .thenComparing(item -> -item.data().getDPS())); // Descending DPS within row
         }
 
-        LOGGER.info("Assigned {} weapons to {} tiers", weapons.size(), tierMap.size());
+        Tierlists.LOGGER.info("Assigned {} weapons to {} tiers", weapons.size(), tierMap.size());
         return tierMap;
     }
 
@@ -82,7 +81,7 @@ public class TierCalculator {
                 .thenComparing(item -> -item.data().getScore())); // Descending score within row
         }
 
-        LOGGER.info("Assigned {} armor pieces to {} tiers", armors.size(), tierMap.size());
+        Tierlists.LOGGER.info("Assigned {} armor pieces to {} tiers", armors.size(), tierMap.size());
         return tierMap;
     }
 

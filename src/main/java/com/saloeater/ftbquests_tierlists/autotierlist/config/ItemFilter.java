@@ -1,6 +1,7 @@
 package com.saloeater.ftbquests_tierlists.autotierlist.config;
 
 import com.mojang.logging.LogUtils;
+import com.saloeater.ftbquests_tierlists.Tierlists;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -17,8 +18,6 @@ import java.util.Set;
  * Filters items based on tags and manual item lists from config.
  */
 public class ItemFilter {
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final Set<TagKey<Item>> weaponTags = new HashSet<>();
     private final Set<TagKey<Item>> armorTags = new HashSet<>();
     private final Set<ResourceLocation> weaponItems = new HashSet<>();
@@ -40,12 +39,12 @@ public class ItemFilter {
                 ResourceLocation tagId = new ResourceLocation(tagString);
                 TagKey<Item> tag = TagKey.create(Registries.ITEM, tagId);
                 weaponTags.add(tag);
-                LOGGER.debug("Loaded weapon tag: {}", tagString);
+                Tierlists.LOGGER.debug("Loaded weapon tag: {}", tagString);
             } catch (Exception e) {
-                LOGGER.warn("Invalid weapon tag '{}': {}", tagString, e.getMessage());
+                Tierlists.LOGGER.warn("Invalid weapon tag '{}': {}", tagString, e.getMessage());
             }
         }
-        LOGGER.info("Loaded {} weapon tags", weaponTags.size());
+        Tierlists.LOGGER.info("Loaded {} weapon tags", weaponTags.size());
     }
 
     /**
@@ -58,12 +57,12 @@ public class ItemFilter {
                 ResourceLocation tagId = new ResourceLocation(tagString);
                 TagKey<Item> tag = TagKey.create(Registries.ITEM, tagId);
                 armorTags.add(tag);
-                LOGGER.debug("Loaded armor tag: {}", tagString);
+                Tierlists.LOGGER.debug("Loaded armor tag: {}", tagString);
             } catch (Exception e) {
-                LOGGER.warn("Invalid armor tag '{}': {}", tagString, e.getMessage());
+                Tierlists.LOGGER.warn("Invalid armor tag '{}': {}", tagString, e.getMessage());
             }
         }
-        LOGGER.info("Loaded {} armor tags", armorTags.size());
+        Tierlists.LOGGER.info("Loaded {} armor tags", armorTags.size());
     }
 
     /**
@@ -76,15 +75,15 @@ public class ItemFilter {
                 ResourceLocation itemId = new ResourceLocation(itemString);
                 if (ForgeRegistries.ITEMS.containsKey(itemId)) {
                     weaponItems.add(itemId);
-                    LOGGER.debug("Loaded weapon item: {}", itemString);
+                    Tierlists.LOGGER.debug("Loaded weapon item: {}", itemString);
                 } else {
-                    LOGGER.warn("Item '{}' not found in registry", itemString);
+                    Tierlists.LOGGER.warn("Item '{}' not found in registry", itemString);
                 }
             } catch (Exception e) {
-                LOGGER.warn("Invalid weapon item '{}': {}", itemString, e.getMessage());
+                Tierlists.LOGGER.warn("Invalid weapon item '{}': {}", itemString, e.getMessage());
             }
         }
-        LOGGER.info("Loaded {} manual weapon items", weaponItems.size());
+        Tierlists.LOGGER.info("Loaded {} manual weapon items", weaponItems.size());
     }
 
     /**
@@ -97,15 +96,15 @@ public class ItemFilter {
                 ResourceLocation itemId = new ResourceLocation(itemString);
                 if (ForgeRegistries.ITEMS.containsKey(itemId)) {
                     armorItems.add(itemId);
-                    LOGGER.debug("Loaded armor item: {}", itemString);
+                    Tierlists.LOGGER.debug("Loaded armor item: {}", itemString);
                 } else {
-                    LOGGER.warn("Item '{}' not found in registry", itemString);
+                    Tierlists.LOGGER.warn("Item '{}' not found in registry", itemString);
                 }
             } catch (Exception e) {
-                LOGGER.warn("Invalid armor item '{}': {}", itemString, e.getMessage());
+                Tierlists.LOGGER.warn("Invalid armor item '{}': {}", itemString, e.getMessage());
             }
         }
-        LOGGER.info("Loaded {} manual armor items", armorItems.size());
+        Tierlists.LOGGER.info("Loaded {} manual armor items", armorItems.size());
     }
 
     /**
@@ -119,15 +118,15 @@ public class ItemFilter {
                 ResourceLocation itemId = new ResourceLocation(itemString);
                 if (ForgeRegistries.ITEMS.containsKey(itemId)) {
                     skippedItems.add(itemId);
-                    LOGGER.debug("Loaded skipped item: {}", itemString);
+                    Tierlists.LOGGER.debug("Loaded skipped item: {}", itemString);
                 } else {
-                    LOGGER.warn("Item '{}' not found in registry", itemString);
+                    Tierlists.LOGGER.warn("Item '{}' not found in registry", itemString);
                 }
             } catch (Exception e) {
-                LOGGER.warn("Invalid skipped item '{}': {}", itemString, e.getMessage());
+                Tierlists.LOGGER.warn("Invalid skipped item '{}': {}", itemString, e.getMessage());
             }
         }
-        LOGGER.info("Loaded {} items to skip", skippedItems.size());
+        Tierlists.LOGGER.info("Loaded {} items to skip", skippedItems.size());
     }
 
     /**

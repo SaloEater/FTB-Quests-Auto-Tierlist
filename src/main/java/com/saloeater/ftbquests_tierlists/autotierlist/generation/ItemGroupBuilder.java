@@ -1,5 +1,6 @@
 package com.saloeater.ftbquests_tierlists.autotierlist.generation;
 
+import com.saloeater.ftbquests_tierlists.Tierlists;
 import com.saloeater.ftbquests_tierlists.autotierlist.analysis.TierCalculator;
 import com.saloeater.ftbquests_tierlists.autotierlist.config.AutoTierlistConfig;
 import com.mojang.logging.LogUtils;
@@ -17,8 +18,6 @@ import java.util.stream.Collectors;
  * @param <T> The item data type (weapon or armor)
  */
 public class ItemGroupBuilder<T> {
-    private static final Logger LOGGER = LogUtils.getLogger();
-
     private final Function<T, ResourceLocation> getItemId;
     private final Function<T, ItemStack> getItemStack;
     private final Function<T, Double> getItemScore;
@@ -159,7 +158,7 @@ public class ItemGroupBuilder<T> {
             groups.add(ItemGroup.isolated(isolatedItems));
         }
 
-        LOGGER.info("Built {} progression groups: {} chains + {} isolated items",
+        Tierlists.LOGGER.info("Built {} progression groups: {} chains + {} isolated items",
             groups.size(), groups.size() - (isolatedItems.isEmpty() ? 0 : 1), isolatedItems.size());
 
         return groups;
@@ -208,7 +207,7 @@ public class ItemGroupBuilder<T> {
             groups.add(ItemGroup.isolated(isolatedItems));
         }
 
-        LOGGER.info("Built {} tag-based groups: {} tag groups + {} isolated items",
+        Tierlists.LOGGER.info("Built {} tag-based groups: {} tag groups + {} isolated items",
             groups.size(), groups.size() - (isolatedItems.isEmpty() ? 0 : 1), isolatedItems.size());
 
         return groups;
