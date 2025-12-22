@@ -10,7 +10,6 @@
     "defaultRequire": 1
   },
   "mixins": [
-    "QuestAccessor",
     "SmithingTransformRecipeAccessor"
   ]
 }
