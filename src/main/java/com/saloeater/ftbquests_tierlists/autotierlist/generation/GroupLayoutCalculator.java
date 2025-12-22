@@ -17,7 +17,7 @@ import java.util.stream.Collectors;
  */
 public class GroupLayoutCalculator<T> {
     public static final int PROGRESSION_SPACING = 1;
-    public static final int TIER_SPACING = 2;
+    public static final int TIER_SPACING = 3;
 
     private final Function<T, ResourceLocation> getItemId;
     private final Function<T, Double> getItemScore;
@@ -66,7 +66,7 @@ public class GroupLayoutCalculator<T> {
                 .orElse(nextStartColumn - 1);
 
             // Next group starts after this one with spacing
-            nextStartColumn = maxColumn + 1 + groupSpacing;
+            nextStartColumn = maxColumn + 0 + groupSpacing;
         }
 
         Tierlists.LOGGER.info("Calculated layout for {} groups", groups.size());

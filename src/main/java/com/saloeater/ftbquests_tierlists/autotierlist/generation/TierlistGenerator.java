@@ -101,7 +101,7 @@ public class TierlistGenerator {
         // Find existing tierlist chapters
         for (Chapter chapter : questFile.getAllChapters()) {
             String filename = chapter.getFilename();
-            if (weaponChapterId.contains(filename) || armorChapterId.contains(filename)) {
+            if (filename.contains(weaponChapterId) || filename.contains(armorChapterId)) {
                 chaptersToRemove.add(chapter);
                 Tierlists.LOGGER.info("Found existing tierlist chapter to remove: {} (ID: {})", filename, chapter.id);
             }

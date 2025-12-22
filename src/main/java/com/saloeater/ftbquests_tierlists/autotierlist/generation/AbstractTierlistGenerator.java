@@ -37,6 +37,7 @@ public abstract class AbstractTierlistGenerator<T> {
 
     public void generate(ServerQuestFile questFile, ServerLevel level, boolean enableProgressionAlignment, ResourceLocation chapterIconItemId) {
         Tierlists.LOGGER.info("Generating {} tierlist (progression: {})...", getItemTypeName(), enableProgressionAlignment);
+        itemToQuestMap.clear();
 
         try {
             // 1. Create and configure item filter
@@ -265,7 +266,7 @@ public abstract class AbstractTierlistGenerator<T> {
                 nextAutoColumn = Math.max(nextAutoColumn, column + 1);
             } else {
                 // Use sequential placement
-                questX = nextAutoColumn * AutoTierlistConfig.QUEST_SPACING_X.get();
+                questX = nextAutoColumn + AutoTierlistConfig.QUEST_SPACING_X.get();
                 nextAutoColumn++;
             }
 
