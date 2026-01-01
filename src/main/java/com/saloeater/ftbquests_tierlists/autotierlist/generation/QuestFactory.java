@@ -22,6 +22,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.ComponentContents;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -173,6 +174,7 @@ public class QuestFactory {
      *
      * @param questFile The quest file
      * @param chapter The parent chapter
+     * @param server The server instance
      * @param itemId The item ID to use for the icon
      * @param advancementId The translatable title key
      * @param x X coordinate
@@ -180,6 +182,7 @@ public class QuestFactory {
      * @return The created quest
      */
     public static Quest createHeaderQuest(ServerQuestFile questFile, Chapter chapter,
+                                          MinecraftServer server,
                                           ResourceLocation itemId, ResourceLocation advancementId,
                                           double x, double y) {
         // Create quest
@@ -192,7 +195,7 @@ public class QuestFactory {
 
         Item item = ForgeRegistries.ITEMS.getValue(itemId);
 
-        var advancement = getAdvancement(advancementId);
+        var advancement = getAdvancement(server, advancementId);
         if (advancement != null) {
             quest.setRawTitle(Component.Serializer.toJson(advancement.getDisplay().getTitle()));
             quest.setRawSubtitle(Component.Serializer.toJson(advancement.getDisplay().getDescription()));
@@ -238,8 +241,7 @@ public class QuestFactory {
         return quest;
     }
 
-    private static Advancement getAdvancement(ResourceLocation advancementId) {
-        ClientAdvancements advancements = Minecraft.getInstance().player.connection.getAdvancements();
-        return advancements.getAdvancements().get(advancementId);
+    private static Advancement getAdvancement(MinecraftServer server, ResourceLocation advancementId) {
+        return server.getAdvancements().getAdvancement(advancementId);
     }
 }

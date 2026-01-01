@@ -19,9 +19,9 @@ public class Tierlists
         var forgeBus = MinecraftForge.EVENT_BUS;
         forgeBus.register(this);
 
-        // Register Auto-Tierlist client config
-        context.registerConfig(ModConfig.Type.CLIENT, AutoTierlistConfig.SPEC);
+        // Register Auto-Tierlist common config
+        context.registerConfig(ModConfig.Type.COMMON, AutoTierlistConfig.SPEC);
 
-        Tierlists.LOGGER.info("Auto-Tierlist module loaded (client-side)");
+        Tierlists.LOGGER.info("Auto-Tierlist module loaded (server-side)");
     }
 }

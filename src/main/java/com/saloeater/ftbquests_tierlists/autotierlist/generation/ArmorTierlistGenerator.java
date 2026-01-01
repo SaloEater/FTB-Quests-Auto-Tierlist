@@ -29,8 +29,8 @@ public class ArmorTierlistGenerator extends AbstractTierlistGenerator<ItemData.A
     }
 
     @Override
-    protected MutableComponent getChapterTitle() {
-        return Component.translatable(AutoTierlistConfig.ARMOR_CHAPTER_TITLE.get());
+    protected String getChapterTitle() {
+        return AutoTierlistConfig.ARMOR_CHAPTER_TITLE.get();
     }
 
     @Override

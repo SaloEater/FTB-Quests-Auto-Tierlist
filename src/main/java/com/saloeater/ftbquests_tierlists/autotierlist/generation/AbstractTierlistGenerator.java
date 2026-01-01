@@ -7,8 +7,10 @@ import com.saloeater.ftbquests_tierlists.autotierlist.config.AutoTierlistConfig;
 import com.saloeater.ftbquests_tierlists.autotierlist.config.ItemFilter;
 import com.saloeater.ftbquests_tierlists.autotierlist.config.TierOverrideManager;
 import com.saloeater.ftbquests_tierlists.autotierlist.progression.CraftingChainDetector;
+import dev.ftb.mods.ftblibrary.config.ColorConfig;
 import dev.ftb.mods.ftblibrary.config.ConfigGroup;
 import dev.ftb.mods.ftblibrary.config.ConfigValue;
+import dev.ftb.mods.ftblibrary.icon.Color4I;
 import dev.ftb.mods.ftblibrary.icon.Icon;
 import dev.ftb.mods.ftbquests.quest.*;
 import net.minecraft.network.chat.Component;
@@ -161,7 +163,7 @@ public abstract class AbstractTierlistGenerator<T> {
 
             // 6.5. Create header quests for tag groups (non-progression mode only)
             if (!enableProgressionAlignment) {
-                createTagGroupHeaders(questFile, chapter, groups, columnAssignments, tierMap);
+                createTagGroupHeaders(questFile, chapter, level.getServer(), groups, columnAssignments, tierMap);
             }
 
             // 7. Create quest dependencies based on crafting relationships
@@ -184,10 +186,10 @@ public abstract class AbstractTierlistGenerator<T> {
     }
 
     private String getModeChapterTitle(boolean enableProgressionAlignment) {
-        var modeTitle = enableProgressionAlignment
-            ? "ftbquests_tierlists.chapter.title.mode.crafting_progression"
-            : "ftbquests_tierlists.chapter.title.mode.tiered_progression";
-        return Component.Serializer.toJson(Component.translatable(modeTitle).append(" ").append(getChapterTitle()));
+        String modeTitle = enableProgressionAlignment
+            ? "Crafting"
+            : "Tiered";
+        return modeTitle + " " + getChapterTitle();
     }
 
     /**
@@ -275,14 +277,9 @@ public abstract class AbstractTierlistGenerator<T> {
             itemToQuestMap.put(itemId, quest);
         }
 
-        // Create background image for the row
-        // Alternate between light and dark gray based on row number
-        String imagePath = (rowNumber % 2 == 0)
-            ? "ftblibrary:textures/gui/row_light_gray.png"
-            : "ftblibrary:textures/gui/row_dark_gray.png";
-
+        var shape = QuestShape.get("square").getShape();
         ChapterImage image = new ChapterImage(chapter);
-        image.setImage(Icon.getIcon(new ResourceLocation(imagePath)));
+        image.setImage(shape);
 
         ConfigGroup group = new ConfigGroup("");
         image.fillConfigGroup(group);
@@ -311,6 +308,10 @@ public abstract class AbstractTierlistGenerator<T> {
                 ConfigValue<Double> yVal = (ConfigValue<Double>) value;
                 yVal.setCurrentValue(imageY);
                 yVal.applyValue();
+            } else if (value.id.equals("color")) {
+                var shapeVal = (ConfigValue<Color4I>) value;
+                shapeVal.setCurrentValue(rowNumber % 2 == 0 ? Color4I.GRAY : Color4I.DARK_GRAY);
+                shapeVal.applyValue();
             }
         }
         chapter.addImage(image);
@@ -320,6 +321,7 @@ public abstract class AbstractTierlistGenerator<T> {
      * Create header quests for tag groups above the global first row.
      */
     private void createTagGroupHeaders(ServerQuestFile questFile, Chapter chapter,
+                                      net.minecraft.server.MinecraftServer server,
                                       List<ItemGroup<T>> groups,
                                       Map<ResourceLocation, Integer> columnAssignments,
                                       Map<ResourceLocation, Integer> tierMap) {
@@ -358,6 +360,7 @@ public abstract class AbstractTierlistGenerator<T> {
             QuestFactory.createHeaderQuest(
                 questFile,
                 chapter,
+                server,
                 tagEntry.getHeaderItem(),
                 tagEntry.getAdvancement(),
                 headerX,
@@ -523,7 +526,7 @@ public abstract class AbstractTierlistGenerator<T> {
     /**
      * Get the chapter title for this tierlist type.
      */
-    protected abstract MutableComponent getChapterTitle();
+    protected abstract String getChapterTitle();
 
     /**
      * Get the item type name for logging (e.g., "weapons" or "armor").

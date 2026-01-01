@@ -129,6 +129,7 @@ dependencies {
     runtimeOnly fg.deobf("curse.maven:tm-1084134:6054971")
     runtimeOnly fg.deobf("curse.maven:ae-897127:7106759")
     runtimeOnly fg.deobf("curse.maven:lt-1282036:7332696")
+//    runtimeOnly fg.deobf("curse.maven:cov-1368461:7375549")
     runtimeOnly fg.deobf("curse.maven:attribute-fix-280510:4911084")
 
     implementation fg.deobf("curse.maven:al-1282036:7332696")

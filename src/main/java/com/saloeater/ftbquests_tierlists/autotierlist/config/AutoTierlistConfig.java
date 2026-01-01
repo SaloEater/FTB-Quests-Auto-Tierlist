@@ -83,11 +83,11 @@ public class AutoTierlistConfig {
 
         WEAPON_CHAPTER_TITLE = BUILDER
             .comment("Translatable title key for weapon chapter")
-            .define("weaponChapterTitle", "ftbquests_tierlists.chapter.weapons.title");
+            .define("weaponChapterTitle", "Weapon Tierlist");
 
         ARMOR_CHAPTER_TITLE = BUILDER
             .comment("Translatable title key for armor chapter")
-            .define("armorChapterTitle", "ftbquests_tierlists.chapter.armor.title");
+            .define("armorChapterTitle", "Armor Tierlist");
 
         // Layout settings
         /*ROWS_PER_TIER = BUILDER
@@ -213,9 +213,9 @@ public class AutoTierlistConfig {
                         String label = tagObj.get("label").getAsString();
                         String color = tagObj.get("color").getAsString();
                         String headerItem = tagObj.has("header_item") ? tagObj.get("header_item").getAsString() : "";
-                        String headerTitle = tagObj.has("advancement") ? tagObj.get("advancement").getAsString() : "";
+                        String advancement = tagObj.has("advancement") ? tagObj.get("advancement").getAsString() : "";
 
-                        defaultTags.add(Arrays.asList(tag, label, color, headerItem, headerTitle));
+                        defaultTags.add(Arrays.asList(tag, label, color, headerItem, advancement));
                     });
                 }
                 Tierlists.LOGGER.info("Loaded {} default tag entries from armageddontags_tierlist.json", defaultTags.size());

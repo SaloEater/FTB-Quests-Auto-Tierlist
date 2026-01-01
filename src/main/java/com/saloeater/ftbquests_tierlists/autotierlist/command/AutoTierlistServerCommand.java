@@ -2,11 +2,10 @@ package com.saloeater.ftbquests_tierlists.autotierlist.command;
 
 import com.saloeater.ftbquests_tierlists.autotierlist.generation.TierlistGenerator;
 import com.saloeater.ftbquests_tierlists.autotierlist.integration.EMIIntegration;
+import com.saloeater.ftbquests_tierlists.autotierlist.mixin.FTBQuestsCommandsAccessor;
 import com.mojang.brigadier.Command;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.context.CommandContext;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
@@ -14,74 +13,31 @@ import net.minecraft.server.MinecraftServer;
 
 
 /**
- * Client commands for managing Auto-Tierlist generation.
- * These commands only work in single-player worlds.
+ * Server commands for managing Auto-Tierlist generation.
  */
-public class AutoTierlistClientCommand {
+public class AutoTierlistServerCommand {
 
     /**
-     * Register the /autotierlist client command.
+     * Register the /autotierlist server command.
      */
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
         dispatcher.register(Commands.literal("autotierlist")
+            .requires(source -> source.hasPermission(2)) // Require OP permission
             .then(Commands.literal("generate")
-                .executes(AutoTierlistClientCommand::generate))
+                .executes(AutoTierlistServerCommand::generate))
             .then(Commands.literal("clear")
-                .executes(AutoTierlistClientCommand::clear))
+                .executes(AutoTierlistServerCommand::clear))
             .then(Commands.literal("dump_excluded_weapons")
-                .executes(AutoTierlistClientCommand::dumpExcludedWeapons))
-            .executes(AutoTierlistClientCommand::help)
+                .executes(AutoTierlistServerCommand::dumpExcludedWeapons))
+            .executes(AutoTierlistServerCommand::help)
         );
     }
 
     /**
-     * Get the integrated server from the client.
-     * Returns null if not in single-player or server is not available.
-     */
-    private static MinecraftServer getIntegratedServer(CommandContext<CommandSourceStack> context) {
-        Minecraft mc = Minecraft.getInstance();
-        LocalPlayer player = mc.player;
-
-        if (player == null) {
-            context.getSource().sendFailure(
-                Component.translatable("ftbquests_tierlists.command.autotierlist.no_player")
-            );
-            return null;
-        }
-
-        if (!mc.hasSingleplayerServer()) {
-            context.getSource().sendFailure(
-                Component.translatable("ftbquests_tierlists.command.autotierlist.singleplayer_only")
-            );
-            return null;
-        }
-
-        MinecraftServer server = mc.getSingleplayerServer();
-        if (server == null) {
-            context.getSource().sendFailure(
-                Component.translatable("ftbquests_tierlists.command.autotierlist.no_server")
-            );
-            return null;
-        }
-
-        return server;
-    }
-
-    /**
-     * Generate tierlists (default - tier progression mode).
+     * Generate tierlists.
      */
     private static int generate(CommandContext<CommandSourceStack> context) {
-        return generateWithMode(context);
-    }
-
-    /**
-     * Generate tierlists with specified progression mode.
-     */
-    private static int generateWithMode(CommandContext<CommandSourceStack> context) {
-        MinecraftServer server = getIntegratedServer(context);
-        if (server == null) {
-            return 0;
-        }
+        MinecraftServer server = context.getSource().getServer();
 
         try {
             // Initialize EMI integration
@@ -93,24 +49,25 @@ public class AutoTierlistClientCommand {
                     TierlistGenerator generator = new TierlistGenerator();
                     generator.generateAll(server);
 
+                    // Reload FTBQuests using mixin invoker
+                    FTBQuestsCommandsAccessor.invokeDoReload(context.getSource());
+
                     context.getSource().sendSuccess(
-                        () -> Component.translatable("ftbquests_tierlists.command.autotierlist.generate.complete"),
+                        () -> Component.literal("[Auto-Tierlist] Generation complete! Check the FTBQuests menu."),
                         true
                     );
                 } catch (Exception e) {
                     context.getSource().sendFailure(
-                        Component.translatable("ftbquests_tierlists.command.autotierlist.generate.failed", e.getMessage())
+                        Component.literal("[Auto-Tierlist] Failed to generate: " + e.getMessage())
                     );
                     e.printStackTrace();
                 }
             });
 
-            Minecraft.getInstance().player.connection.sendCommand("ftbquests reload");
-
             return Command.SINGLE_SUCCESS;
         } catch (Exception e) {
             context.getSource().sendFailure(
-                Component.translatable("ftbquests_tierlists.command.autotierlist.generate.failed", e.getMessage())
+                Component.literal("[Auto-Tierlist] Failed to generate: " + e.getMessage())
             );
             e.printStackTrace();
             return 0;
@@ -121,14 +78,11 @@ public class AutoTierlistClientCommand {
      * Clear all generated tierlists.
      */
     private static int clear(CommandContext<CommandSourceStack> context) {
-        MinecraftServer server = getIntegratedServer(context);
-        if (server == null) {
-            return 0;
-        }
+        MinecraftServer server = context.getSource().getServer();
 
         try {
             context.getSource().sendSuccess(
-                () -> Component.translatable("ftbquests_tierlists.command.autotierlist.clear.starting"),
+                () -> Component.literal("[Auto-Tierlist] Clearing existing chapters..."),
                 true
             );
 
@@ -139,12 +93,12 @@ public class AutoTierlistClientCommand {
                     generator.clearAll(server);
 
                     context.getSource().sendSuccess(
-                        () -> Component.translatable("ftbquests_tierlists.command.autotierlist.clear.complete"),
+                        () -> Component.literal("[Auto-Tierlist] Cleared! Quest files should be removed."),
                         true
                     );
                 } catch (Exception e) {
                     context.getSource().sendFailure(
-                        Component.translatable("ftbquests_tierlists.command.autotierlist.clear.failed", e.getMessage())
+                        Component.literal("[Auto-Tierlist] Failed to clear: " + e.getMessage())
                     );
                     e.printStackTrace();
                 }
@@ -153,7 +107,7 @@ public class AutoTierlistClientCommand {
             return Command.SINGLE_SUCCESS;
         } catch (Exception e) {
             context.getSource().sendFailure(
-                Component.translatable("ftbquests_tierlists.command.autotierlist.clear.failed", e.getMessage())
+                Component.literal("[Auto-Tierlist] Failed to clear: " + e.getMessage())
             );
             e.printStackTrace();
             return 0;
@@ -164,14 +118,11 @@ public class AutoTierlistClientCommand {
      * Dump excluded weapons to file.
      */
     private static int dumpExcludedWeapons(CommandContext<CommandSourceStack> context) {
-        MinecraftServer server = getIntegratedServer(context);
-        if (server == null) {
-            return 0;
-        }
+        MinecraftServer server = context.getSource().getServer();
 
         try {
             context.getSource().sendSuccess(
-                () -> Component.translatable("ftbquests_tierlists.command.autotierlist.dump.starting"),
+                () -> Component.literal("[Auto-Tierlist] Scanning for excluded weapons..."),
                 true
             );
 
@@ -253,12 +204,12 @@ public class AutoTierlistClientCommand {
 
                     int finalTotalExcluded = totalExcluded;
                     context.getSource().sendSuccess(
-                        () -> Component.translatable("ftbquests_tierlists.command.autotierlist.dump.complete", finalTotalExcluded, outputPath.toAbsolutePath()),
+                        () -> Component.literal("[Auto-Tierlist] Dumped " + finalTotalExcluded + " excluded weapons to: " + outputPath.toAbsolutePath()),
                         true
                     );
                 } catch (Exception e) {
                     context.getSource().sendFailure(
-                        Component.translatable("ftbquests_tierlists.command.autotierlist.dump.failed", e.getMessage())
+                        Component.literal("[Auto-Tierlist] Failed to dump: " + e.getMessage())
                     );
                     e.printStackTrace();
                 }
@@ -267,7 +218,7 @@ public class AutoTierlistClientCommand {
             return Command.SINGLE_SUCCESS;
         } catch (Exception e) {
             context.getSource().sendFailure(
-                Component.translatable("ftbquests_tierlists.command.autotierlist.dump.failed", e.getMessage())
+                Component.literal("[Auto-Tierlist] Failed to dump: " + e.getMessage())
             );
             e.printStackTrace();
             return 0;
@@ -294,21 +245,11 @@ public class AutoTierlistClientCommand {
      */
     private static int help(CommandContext<CommandSourceStack> context) {
         context.getSource().sendSuccess(
-            () -> Component.translatable("ftbquests_tierlists.command.autotierlist.help.header")
-                .append(Component.literal("\n"))
-                .append(Component.translatable("ftbquests_tierlists.command.autotierlist.help.generate"))
-                .append(Component.literal("\n"))
-                .append(Component.translatable("ftbquests_tierlists.command.autotierlist.help.generate.crafting"))
-                .append(Component.literal("\n"))
-                .append(Component.translatable("ftbquests_tierlists.command.autotierlist.help.generate.tier"))
-                .append(Component.literal("\n"))
-                .append(Component.translatable("ftbquests_tierlists.command.autotierlist.help.clear"))
-                .append(Component.literal("\n"))
-                .append(Component.translatable("ftbquests_tierlists.command.autotierlist.help.dump"))
-                .append(Component.literal("\n"))
-                .append(Component.translatable("ftbquests_tierlists.command.autotierlist.help.config"))
-                .append(Component.literal("\n"))
-                .append(Component.translatable("ftbquests_tierlists.command.autotierlist.help.note")),
+            () -> Component.literal("§6=== Auto-Tierlist Commands (Server) ===\n")
+                .append(Component.literal("§e/autotierlist generate §7- Generate tierlists\n"))
+                .append(Component.literal("§e/autotierlist clear §7- Remove generated tierlist chapters\n"))
+                .append(Component.literal("§e/autotierlist dump_excluded_weapons §7- Export excluded weapons to file\n"))
+                .append(Component.literal("§7Config: §fconfig/ftbquests_tierlists-common.toml")),
             false
         );
         return Command.SINGLE_SUCCESS;
