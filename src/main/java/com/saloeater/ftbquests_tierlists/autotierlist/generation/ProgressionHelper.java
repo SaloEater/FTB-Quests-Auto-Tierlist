@@ -140,6 +140,49 @@ public class ProgressionHelper {
     }
 
     /**
+     * Compute, for each item, the length of the longest chain of same-tier
+     * recipe dependencies below it. Dependencies in other tiers (or with an
+     * unknown tier) contribute nothing. Cycle-safe: back-edges count as depth 0.
+     */
+    public static Map<ResourceLocation, Integer> computeSameTierDepths(
+            Map<ResourceLocation, Set<ResourceLocation>> recipeGraph,
+            Map<ResourceLocation, Integer> tierMap) {
+        Map<ResourceLocation, Integer> depths = new HashMap<>();
+        for (ResourceLocation item : tierMap.keySet()) {
+            computeSameTierDepth(item, recipeGraph, tierMap, depths, new HashSet<>());
+        }
+        return depths;
+    }
+
+    private static int computeSameTierDepth(ResourceLocation item,
+                                            Map<ResourceLocation, Set<ResourceLocation>> recipeGraph,
+                                            Map<ResourceLocation, Integer> tierMap,
+                                            Map<ResourceLocation, Integer> depths,
+                                            Set<ResourceLocation> visiting) {
+        Integer cached = depths.get(item);
+        if (cached != null) {
+            return cached;
+        }
+        if (!visiting.add(item)) {
+            return 0;
+        }
+
+        Integer tier = tierMap.get(item);
+        int depth = 0;
+        if (tier != null) {
+            for (ResourceLocation dep : recipeGraph.getOrDefault(item, Collections.emptySet())) {
+                if (tier.equals(tierMap.get(dep))) {
+                    depth = Math.max(depth, computeSameTierDepth(dep, recipeGraph, tierMap, depths, visiting) + 1);
+                }
+            }
+        }
+
+        visiting.remove(item);
+        depths.put(item, depth);
+        return depth;
+    }
+
+    /**
      * Build a chain of related items by following dependency connections.
      */
     private static void buildChain(ResourceLocation item, Set<ResourceLocation> chain,

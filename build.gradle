@@ -131,6 +131,8 @@ dependencies {
     runtimeOnly fg.deobf("curse.maven:lt-1282036:7332696")
 //    runtimeOnly fg.deobf("curse.maven:cov-1368461:7375549")
     runtimeOnly fg.deobf("curse.maven:attribute-fix-280510:4911084")
+    runtimeOnly fg.deobf("curse.maven:knight-quest-1018043:8253271")
+    runtimeOnly fg.deobf("curse.maven:knight-lib-1105855:8400697")
 
     implementation fg.deobf("curse.maven:al-1282036:7332696")
 

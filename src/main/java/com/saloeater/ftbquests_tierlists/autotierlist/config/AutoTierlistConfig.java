@@ -38,6 +38,7 @@ public class AutoTierlistConfig {
     public static final ForgeConfigSpec.DoubleValue QUEST_SPACING_X;
     public static final ForgeConfigSpec.DoubleValue QUEST_SPACING_Y;
     public static final ForgeConfigSpec.DoubleValue TIER_SPACING_Y;
+    public static final ForgeConfigSpec.DoubleValue DEPENDENT_ROW_OFFSET;
 
     // Override lists
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> WEAPON_TIER_OVERRIDES;
@@ -105,6 +106,12 @@ public class AutoTierlistConfig {
         TIER_SPACING_Y = BUILDER
             .comment("Extra vertical spacing between tiers")
             .defineInRange("tierSpacingY", 1, 1, 10.0);
+
+        DEPENDENT_ROW_OFFSET = BUILDER
+            .comment("Vertical offset per same-tier crafting dependency level (progression mode)",
+                     "Items crafted from a same-tier item are pushed down by this fraction of a row",
+                     "Set to 0 to disable")
+            .defineInRange("dependentRowOffset", 1, 0.0, 5.0);
 
         // Override lists
         WEAPON_TIER_OVERRIDES = BUILDER

@@ -62,31 +62,35 @@ public class QuestFactory {
         task.setStackAndCount(item, 1);
         task.setConsumeItems(dev.ftb.mods.ftblibrary.config.Tristate.FALSE);
         task.onCreated();
-        var list = new ArrayList<Component>();
-        item.getItem().appendHoverText(item, null, list, TooltipFlag.NORMAL);
-        if (!list.isEmpty()) {
-            MutableComponent subtitle = null;
-            for (int i = 0; i < list.size(); i++) {
-                Component component = list.get(i);
-                if (!isValidComponent(component)) {
-                    continue;
+        try {
+            var list = new ArrayList<Component>();
+            item.getItem().appendHoverText(item, null, list, TooltipFlag.NORMAL);
+            if (!list.isEmpty()) {
+                MutableComponent subtitle = null;
+                for (int i = 0; i < list.size(); i++) {
+                    Component component = list.get(i);
+                    if (!isValidComponent(component)) {
+                        continue;
+                    }
+                    if (subtitle == null) {
+                        subtitle = (MutableComponent) component;
+                    } else {
+                        subtitle = subtitle.append(component);
+                    }
+                    if (i < list.size() - 1) {
+                        subtitle = subtitle.append(Component.literal("\n"));
+                    }
                 }
-                if (subtitle == null) {
-                    subtitle = (MutableComponent) component;
-                } else {
-                    subtitle = subtitle.append(component);
-                }
-                if (i < list.size() - 1) {
-                    subtitle = subtitle.append(Component.literal("\n"));
+                try {
+                    quest.setRawSubtitle(Component.Serializer.toJson(subtitle));
+                } catch (Exception e) {
+                    LogUtils.getLogger().error("Failed to set subtitle for item {}: {}", item.toString(), e.getMessage());
                 }
             }
-            try {
-                quest.setRawSubtitle(Component.Serializer.toJson(subtitle));
-            } catch (Exception e) {
-                LogUtils.getLogger().error("Failed to set subtitle for item {}: {}", item.toString(), e.getMessage());
-            }
+        } catch (Exception e) {
+            LogUtils.getLogger().error("Failed to generate subtitle for item {}: {}", item.toString(), e.getMessage());
+            Minecraft.getInstance().player.displayClientMessage(Component.literal("Failed to generate subtitle for item " + item.toString() + ": " + e.getMessage()), false);
         }
-
         List<AutoTierlistConfig.TagEntry> tagEntries = AutoTierlistConfig.getArmageddonTagEntries();
         for (AutoTierlistConfig.TagEntry entry : tagEntries) {
             for (var tagKey : entry.getTagKeys()) {
@@ -144,20 +148,6 @@ public class QuestFactory {
     }
 
     /**
-     * Calculate the Y coordinate for a tier's base position.
-     *
-     * @param tierIndex The sequential index of this tier (0 for first tier, 1 for second, etc.)
-     * @param rowsPerTier Number of rows per tier
-     * @param questSpacingY Vertical spacing between quests
-     * @param tierSpacingY Extra spacing between tiers
-     * @return The Y coordinate
-     */
-    public static double calculateTierBaseY(int tierIndex, int rowsPerTier,
-                                           double questSpacingY, double tierSpacingY) {
-        return tierIndex * (rowsPerTier * questSpacingY + tierSpacingY);
-    }
-
-    /**
      * Calculate the Y coordinate for a quest within a tier.
      *
      * @param tierBaseY The tier's base Y coordinate
@@ -165,7 +155,7 @@ public class QuestFactory {
      * @param questSpacingY Vertical spacing between quests
      * @return The Y coordinate
      */
-    public static double calculateQuestY(double tierBaseY, int row, double questSpacingY) {
+    public static double calculateQuestY(double tierBaseY, double row, double questSpacingY) {
         return tierBaseY + row * questSpacingY;
     }
 

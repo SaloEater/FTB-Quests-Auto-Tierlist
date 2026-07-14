@@ -95,6 +95,9 @@ public abstract class AbstractTierlistGenerator<T> {
                 }
             }
 
+            // Depth of same-tier dependency chains, used to nudge dependents below their ingredients
+            Map<ResourceLocation, Integer> sameTierDepths = ProgressionHelper.computeSameTierDepths(recipeGraph, tierMap);
+
             // === PHASE 1: Build item groups ===
             ItemGroupBuilder<T> groupBuilder = new ItemGroupBuilder<>(
                 this::getItemId,
@@ -156,9 +159,23 @@ public abstract class AbstractTierlistGenerator<T> {
             List<Integer> sortedTiers = new ArrayList<>(tiers.keySet());
             Collections.sort(sortedTiers);
 
+            double questSpacingY = AutoTierlistConfig.QUEST_SPACING_Y.get();
+            double tierSpacingY = AutoTierlistConfig.TIER_SPACING_Y.get();
+            double dependentOffset = AutoTierlistConfig.DEPENDENT_ROW_OFFSET.get();
+            double tierBaseY = 0;
             for (int tierIndex = 0; tierIndex < sortedTiers.size(); tierIndex++) {
                 int tier = sortedTiers.get(tierIndex);
-                generateTierQuests(questFile, chapter, tier, tierIndex, tiers.get(tier), columnAssignments);
+                List<TierCalculator.TieredItem<T>> tierItems = tiers.get(tier);
+                generateTierQuests(questFile, chapter, tier, tierIndex, tierBaseY, tierItems, columnAssignments, sameTierDepths);
+
+                // Advance by this tier's actual height: dependent offsets can make it taller than one row
+                int maxDepth = tierItems.stream()
+                    .mapToInt(tieredItem -> sameTierDepths.getOrDefault(getItemId(tieredItem.data()), 0))
+                    .max()
+                    .orElse(0);
+                tierBaseY += AutoTierlistConfig.ROWS_PER_TIER * questSpacingY
+                    + maxDepth * dependentOffset * questSpacingY
+                    + tierSpacingY;
             }
 
             // 6.5. Create header quests for tag groups (non-progression mode only)
@@ -196,16 +213,10 @@ public abstract class AbstractTierlistGenerator<T> {
      * Generate quests for a single tier.
      */
     private void generateTierQuests(ServerQuestFile questFile, Chapter chapter, int tier, int tierIndex,
+                                    double tierBaseY,
                                     List<TierCalculator.TieredItem<T>> items,
-                                    Map<ResourceLocation, Integer> columnAssignments) {
-        // Calculate tier base Y position using sequential index, not tier number
-        double tierBaseY = QuestFactory.calculateTierBaseY(
-            tierIndex,
-            AutoTierlistConfig.ROWS_PER_TIER,
-            AutoTierlistConfig.QUEST_SPACING_Y.get(),
-            AutoTierlistConfig.TIER_SPACING_Y.get()
-        );
-
+                                    Map<ResourceLocation, Integer> columnAssignments,
+                                    Map<ResourceLocation, Integer> sameTierDepths) {
         // Create secret tier marker quest
         String tierLabel = getTierLabel(tier);
         QuestFactory.createSecretTierQuest(questFile, chapter, tierLabel, tierBaseY);
@@ -226,7 +237,7 @@ public abstract class AbstractTierlistGenerator<T> {
             double questY = QuestFactory.calculateQuestY(tierBaseY, row, AutoTierlistConfig.QUEST_SPACING_Y.get());
             // Calculate global row number for alternating colors (tierIndex * rowsPerTier + row)
             int globalRowNumber = tierIndex * AutoTierlistConfig.ROWS_PER_TIER + row;
-            generateRowQuests(questFile, chapter, rowItems, questY, columnAssignments, globalRowNumber);
+            generateRowQuests(questFile, chapter, rowItems, questY, columnAssignments, sameTierDepths, globalRowNumber);
         }
     }
 
@@ -237,6 +248,7 @@ public abstract class AbstractTierlistGenerator<T> {
                                    List<TierCalculator.TieredItem<T>> items,
                                    double questY,
                                    Map<ResourceLocation, Integer> columnAssignments,
+                                   Map<ResourceLocation, Integer> sameTierDepths,
                                    int rowNumber) {
         // Sort items: first by column assignment, then by Armageddon tag order, then by score (weaker first)
         if (!columnAssignments.isEmpty()) {
@@ -272,8 +284,12 @@ public abstract class AbstractTierlistGenerator<T> {
                 nextAutoColumn++;
             }
 
-            // Create quest and track it
-            Quest quest = QuestFactory.createItemQuest(questFile, chapter, getItemStack(item.data()), questX, questY);
+            // Create quest and track it, nudging same-tier dependents below their ingredients
+            int depth = sameTierDepths.getOrDefault(itemId, 0);
+            double itemY = QuestFactory.calculateQuestY(questY,
+                AutoTierlistConfig.DEPENDENT_ROW_OFFSET.get() * depth,
+                AutoTierlistConfig.QUEST_SPACING_Y.get());
+            Quest quest = QuestFactory.createItemQuest(questFile, chapter, getItemStack(item.data()), questX, itemY);
             itemToQuestMap.put(itemId, quest);
         }
 
