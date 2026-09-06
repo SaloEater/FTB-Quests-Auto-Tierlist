@@ -51,6 +51,7 @@ public class AutoTierlistConfig {
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> ARMOR_ITEMS;
     public static final ForgeConfigSpec.BooleanValue USE_ATTRIBUTE_DETECTION;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_EMI_CATEGORIES;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_RECIPE_PATTERNS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_ITEMS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends List<String>>> ARMAGEDDON_TAGS;
     public static final ForgeConfigSpec.ConfigValue<String> CHAPTER_GROUP;
@@ -179,6 +180,17 @@ public class AutoTierlistConfig {
                      "  - emi:anvil_repairing (anvil repairs)")
             .defineListAllowEmpty(List.of("skippedEmiCategories"),
                                  () -> List.of("emi:anvil_repairing"),
+                                 obj -> obj instanceof String);
+
+        SKIPPED_RECIPE_PATTERNS = BUILDER
+            .comment("Regex patterns matched against EMI recipe IDs to skip when building crafting chains",
+                     "Matched as a substring search, so \"trim\" skips any ID containing it;",
+                     "anchor with ^ and $ for a full match",
+                     "EMI IDs are either the datapack recipe ID (\"minecraft:lime_dye_from_smelting\")",
+                     "or a synthetic ID with a leading slash (\"create:/mixing/andesite_alloy\")",
+                     "Example: \"^create:/\" to skip all synthetic Create recipes")
+            .defineListAllowEmpty(List.of("skippedRecipePatterns"),
+                                 () -> List.of("trim"),
                                  obj -> obj instanceof String);
 
         SKIPPED_ITEMS = BUILDER

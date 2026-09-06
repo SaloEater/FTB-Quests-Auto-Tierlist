@@ -14,6 +14,8 @@ import net.minecraft.world.item.ItemStack;
 import org.slf4j.Logger;
 
 import java.util.*;
+import java.util.regex.Pattern;
+import java.util.regex.PatternSyntaxException;
 
 /**
  * Integration with EMI (Everything May be Itemized) for comprehensive recipe lookup.
@@ -21,6 +23,13 @@ import java.util.*;
  */
 public class EMIIntegration {
     private static EmiRecipeManager recipeManager = null;
+
+    /** Compiled form of SKIPPED_RECIPE_PATTERNS, recompiled when the config list changes. */
+    private static List<? extends String> patternSource = null;
+    private static List<Pattern> skippedRecipePatterns = List.of();
+
+    /** Extra skip patterns for a single generation run, supplied as a command argument. */
+    private static List<Pattern> extraSkippedRecipePatterns = List.of();
 
     /**
      * Initialize EMI integration.
@@ -34,6 +43,33 @@ public class EMIIntegration {
             Tierlists.LOGGER.error("Failed to initialize EMI integration", e);
             recipeManager = null;
         }
+    }
+
+    /**
+     * Set extra recipe skip patterns that apply until {@link #clearExtraSkippedRecipePatterns()}
+     * is called. These are added on top of the configured patterns, not a replacement.
+     * Invalid patterns are logged and dropped.
+     *
+     * @return The number of patterns that compiled successfully
+     */
+    public static int setExtraSkippedRecipePatterns(List<String> patternStrings) {
+        List<Pattern> compiled = new ArrayList<>();
+        for (String patternString : patternStrings) {
+            try {
+                compiled.add(Pattern.compile(patternString));
+            } catch (PatternSyntaxException e) {
+                Tierlists.LOGGER.warn("Invalid skipped recipe pattern '{}': {}", patternString, e.getMessage());
+            }
+        }
+        extraSkippedRecipePatterns = compiled;
+        return compiled.size();
+    }
+
+    /**
+     * Drop the extra recipe skip patterns, restoring config-only behaviour.
+     */
+    public static void clearExtraSkippedRecipePatterns() {
+        extraSkippedRecipePatterns = List.of();
     }
 
     /**
@@ -75,6 +111,10 @@ public class EMIIntegration {
         if (!skippedCategories.isEmpty()) {
             Tierlists.LOGGER.info("Skipping EMI recipe categories: {}", String.join(", ", skippedCategories));
         }
+        List<? extends String> skippedPatterns = AutoTierlistConfig.SKIPPED_RECIPE_PATTERNS.get();
+        if (!skippedPatterns.isEmpty()) {
+            Tierlists.LOGGER.info("Skipping EMI recipe IDs matching: {}", String.join(", ", skippedPatterns));
+        }
 
         try {
             // For each relevant item, find recipes where it's the output
@@ -109,8 +149,95 @@ public class EMIIntegration {
     }
 
     /**
+     * One recipe linking the queried item to other items in the tierlist pool.
+     *
+     * @param recipeId   The EMI recipe ID, or null if the recipe has none
+     * @param categoryId The EMI category the recipe is displayed under
+     * @param skipped    Whether this recipe is currently filtered out of crafting chains
+     * @param items      The pool items this recipe connects the queried item to
+     */
+    public record RecipeConnection(ResourceLocation recipeId, String categoryId, boolean skipped,
+                                   List<ResourceLocation> items) {
+    }
+
+    /**
+     * Find the recipes that produce the given item, reporting which pool items each one
+     * pulls in as an ingredient. Skipped recipes are included and flagged, so the result
+     * shows both the connections that exist and the ones the filters removed.
+     *
+     * @param itemId        The item to inspect
+     * @param relevantItems The tierlist item pool
+     */
+    public static List<RecipeConnection> getConnectionsForOutput(ResourceLocation itemId,
+                                                                 Set<ResourceLocation> relevantItems) {
+        return getConnections(itemId, relevantItems, true);
+    }
+
+    /**
+     * Find the recipes that consume the given item, reporting which pool items each one
+     * produces. This is the reverse direction of {@link #getConnectionsForOutput}.
+     *
+     * @param itemId        The item to inspect
+     * @param relevantItems The tierlist item pool
+     */
+    public static List<RecipeConnection> getConnectionsForInput(ResourceLocation itemId,
+                                                                Set<ResourceLocation> relevantItems) {
+        return getConnections(itemId, relevantItems, false);
+    }
+
+    /**
+     * Shared implementation of the two connection lookups.
+     *
+     * @param asOutput True to look up recipes producing the item and report their ingredients,
+     *                 false to look up recipes consuming it and report their outputs
+     */
+    private static List<RecipeConnection> getConnections(ResourceLocation itemId,
+                                                         Set<ResourceLocation> relevantItems,
+                                                         boolean asOutput) {
+        if (!isAvailable()) {
+            Tierlists.LOGGER.warn("EMI not available, cannot query recipes");
+            return List.of();
+        }
+
+        ItemStack stack = new ItemStack(net.minecraftforge.registries.ForgeRegistries.ITEMS.getValue(itemId));
+        if (stack.isEmpty()) return List.of();
+
+        EmiStack emiStack = EmiStack.of(stack);
+        List<EmiRecipe> recipes = asOutput
+            ? recipeManager.getRecipesByOutput(emiStack)
+            : recipeManager.getRecipesByInput(emiStack);
+
+        List<RecipeConnection> connections = new ArrayList<>();
+        for (EmiRecipe recipe : recipes) {
+            Set<ResourceLocation> linked = new TreeSet<>(Comparator.comparing(ResourceLocation::toString));
+            if (asOutput) {
+                extractIngredients(recipe, itemId, relevantItems, linked);
+            } else {
+                for (EmiStack output : recipe.getOutputs()) {
+                    if (output.isEmpty()) continue;
+                    ResourceLocation outputId = new ResourceLocation(
+                        output.getId().getNamespace(), output.getId().getPath());
+                    if (outputId.equals(itemId)) continue;
+                    if (relevantItems.contains(outputId)) {
+                        linked.add(outputId);
+                    }
+                }
+            }
+
+            connections.add(new RecipeConnection(
+                recipe.getId(),
+                recipe.getCategory().getId().toString(),
+                !isRealRecipe(recipe),
+                new ArrayList<>(linked)));
+        }
+
+        return connections;
+    }
+
+    /**
      * Check if a recipe should be included in crafting chain detection.
-     * Returns false if the recipe's category is in the skip list.
+     * Returns false if the recipe's category is in the skip list, or if its ID
+     * matches one of the configured or per-run skip patterns.
      */
     private static boolean isRealRecipe(EmiRecipe recipe) {
         var category = recipe.getCategory();
@@ -123,16 +250,46 @@ public class EMIIntegration {
             }
         }
 
-        String recipeId = "";
-        if (recipe.getBackingRecipe() != null) {
-            recipeId = recipe.getBackingRecipe().getId().toString();
-        }
-        var isTrim = recipeId.contains("trim");
-        if (isTrim) {
-            return false;
+        // Check the recipe ID against the skip patterns. Use getId() rather than
+        // getBackingRecipe(), which only resolves recipes registered in the vanilla
+        // RecipeManager and is null for every synthetic (modded machine) recipe.
+        ResourceLocation recipeId = recipe.getId();
+        if (recipeId != null) {
+            String id = recipeId.toString();
+            for (Pattern pattern : getSkippedRecipePatterns()) {
+                if (pattern.matcher(id).find()) {
+                    return false;
+                }
+            }
+            for (Pattern pattern : extraSkippedRecipePatterns) {
+                if (pattern.matcher(id).find()) {
+                    return false;
+                }
+            }
         }
 
         return true;
+    }
+
+    /**
+     * Get the compiled skip patterns, recompiling only when the config list changed.
+     * Invalid patterns are logged and dropped.
+     */
+    private static List<Pattern> getSkippedRecipePatterns() {
+        List<? extends String> raw = AutoTierlistConfig.SKIPPED_RECIPE_PATTERNS.get();
+        if (!raw.equals(patternSource)) {
+            List<Pattern> compiled = new ArrayList<>();
+            for (String patternString : raw) {
+                try {
+                    compiled.add(Pattern.compile(patternString));
+                } catch (PatternSyntaxException e) {
+                    Tierlists.LOGGER.warn("Invalid skipped recipe pattern '{}': {}", patternString, e.getMessage());
+                }
+            }
+            patternSource = raw;
+            skippedRecipePatterns = compiled;
+        }
+        return skippedRecipePatterns;
     }
 
     /**

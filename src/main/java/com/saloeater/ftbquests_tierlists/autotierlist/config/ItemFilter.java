@@ -130,6 +130,13 @@ public class ItemFilter {
     }
 
     /**
+     * Check if an item is in the skipped items list.
+     */
+    public boolean isSkipped(ResourceLocation itemId) {
+        return skippedItems.contains(itemId);
+    }
+
+    /**
      * Check if an item should be included in the weapon tierlist.
      *
      * @param itemId The item's resource location
