@@ -104,20 +104,35 @@ public abstract class AbstractTierlistGenerator<T> {
                 this::getItemStack,
                 this::getItemScore
             );
-            List<ItemGroup<T>> groups = groupBuilder.buildGroups(allTieredItems, recipeGraph, tierMap, enableProgressionAlignment);
-
             // === PHASE 2: Calculate layout for groups ===
             GroupLayoutCalculator<T> layoutCalculator = new GroupLayoutCalculator<>(
                 this::getItemId,
                 this::getItemScore
             );
             int groupSpacing = enableProgressionAlignment ? GroupLayoutCalculator.PROGRESSION_SPACING : GroupLayoutCalculator.TIER_SPACING;
-            layoutCalculator.calculateLayout(groups, recipeGraph, tierMap, scoreMap, groupSpacing);
 
-            // Build global column assignments from all groups
+            // Each section is grouped and laid out on its own, so its columns start from 0
+            Map<Integer, List<TierCalculator.TieredItem<T>>> sections = new TreeMap<>();
+            for (TierCalculator.TieredItem<T> tieredItem : allTieredItems) {
+                sections.computeIfAbsent(getSection(tieredItem.data()), k -> new ArrayList<>()).add(tieredItem);
+            }
+
+            List<ItemGroup<T>> groups = new ArrayList<>();
             Map<ResourceLocation, Integer> columnAssignments = new HashMap<>();
-            for (ItemGroup<T> group : groups) {
-                columnAssignments.putAll(group.getColumnAssignments());
+            for (List<TierCalculator.TieredItem<T>> sectionItems : sections.values()) {
+                // Only crafting relationships inside the section shape its layout;
+                // quest dependencies still use the full graph
+                Map<ResourceLocation, Set<ResourceLocation>> sectionGraph = sections.size() == 1
+                    ? recipeGraph
+                    : restrictGraphToItems(recipeGraph, sectionItems);
+
+                List<ItemGroup<T>> sectionGroups = groupBuilder.buildGroups(sectionItems, sectionGraph, tierMap, enableProgressionAlignment);
+                layoutCalculator.calculateLayout(sectionGroups, sectionGraph, tierMap, scoreMap, groupSpacing);
+
+                for (ItemGroup<T> group : sectionGroups) {
+                    columnAssignments.putAll(group.getColumnAssignments());
+                }
+                groups.addAll(sectionGroups);
             }
 
             // === PHASE 3: Generate quests ===
@@ -166,6 +181,9 @@ public abstract class AbstractTierlistGenerator<T> {
             for (int tierIndex = 0; tierIndex < sortedTiers.size(); tierIndex++) {
                 int tier = sortedTiers.get(tierIndex);
                 List<TierCalculator.TieredItem<T>> tierItems = tiers.get(tier);
+                if (tierIndex > 0) {
+                    tierBaseY += getExtraSpacingBeforeTier(sortedTiers.get(tierIndex - 1), tier);
+                }
                 generateTierQuests(questFile, chapter, tier, tierIndex, tierBaseY, tierItems, columnAssignments, sameTierDepths);
 
                 // Advance by this tier's actual height: dependent offsets can make it taller than one row
@@ -195,6 +213,31 @@ public abstract class AbstractTierlistGenerator<T> {
             Tierlists.LOGGER.error("Failed to generate {} tierlist", getItemTypeName(), e);
             throw new RuntimeException(getItemTypeName() + " tierlist generation failed", e);
         }
+    }
+
+    /**
+     * Keep only the recipe relationships where both the output and the ingredient
+     * are among the given items.
+     */
+    private Map<ResourceLocation, Set<ResourceLocation>> restrictGraphToItems(
+            Map<ResourceLocation, Set<ResourceLocation>> recipeGraph,
+            List<TierCalculator.TieredItem<T>> items) {
+        Set<ResourceLocation> itemIds = new HashSet<>();
+        for (TierCalculator.TieredItem<T> tieredItem : items) {
+            itemIds.add(getItemId(tieredItem.data()));
+        }
+
+        Map<ResourceLocation, Set<ResourceLocation>> restricted = new HashMap<>();
+        for (Map.Entry<ResourceLocation, Set<ResourceLocation>> entry : recipeGraph.entrySet()) {
+            if (!itemIds.contains(entry.getKey())) continue;
+
+            Set<ResourceLocation> ingredients = new HashSet<>(entry.getValue());
+            ingredients.retainAll(itemIds);
+            if (!ingredients.isEmpty()) {
+                restricted.put(entry.getKey(), ingredients);
+            }
+        }
+        return restricted;
     }
 
     private String getModeChapterId(boolean enableProgressionAlignment) {
@@ -578,6 +621,24 @@ public abstract class AbstractTierlistGenerator<T> {
      * Get the tier label for displaying on the secret quest.
      */
     protected abstract String getTierLabel(int tier);
+
+    /**
+     * Get the section an item belongs to. Sections are laid out independently,
+     * each with its own columns starting from 0.
+     */
+    protected int getSection(T item) {
+        return 0;
+    }
+
+    /**
+     * Get extra vertical spacing to insert before a tier, e.g. to separate sections.
+     *
+     * @param previousTier The tier directly above
+     * @param tier The tier about to be generated
+     */
+    protected double getExtraSpacingBeforeTier(int previousTier, int tier) {
+        return 0;
+    }
 
     /**
      * Get the numeric score for an item (DPS for weapons, armor score for armor).

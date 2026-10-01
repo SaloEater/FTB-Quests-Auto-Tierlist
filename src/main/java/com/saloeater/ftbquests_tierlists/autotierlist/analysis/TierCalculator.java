@@ -15,6 +15,12 @@ public class TierCalculator {
     private final int rowsPerTier;
     private final TierOverrideManager overrideManager;
 
+    /**
+     * Added to the tier of armor in the magic section, so magic tiers never collide
+     * with regular armor tiers and always sort after them.
+     */
+    public static final int MAGIC_TIER_OFFSET = 10000;
+
     public TierCalculator(double tierMultiplier, int rowsPerTier, TierOverrideManager overrideManager) {
         this.tierMultiplier = tierMultiplier;
         this.rowsPerTier = rowsPerTier;
@@ -57,19 +63,26 @@ public class TierCalculator {
      * Score formula: armor * (toughness + 8) / 5
      * Tier formula: tier = floor(score / tierMultiplier)
      */
-    public Map<Integer, List<TieredItem<ItemData.ArmorData>>> assignArmorTiers(List<ItemData.ArmorData> armors) {
+    public Map<Integer, List<TieredItem<ItemData.ArmorData>>> assignArmorTiers(
+            List<ItemData.ArmorData> armors,
+            java.util.function.Predicate<ItemData.ArmorData> inMagicSection,
+            java.util.function.ToDoubleFunction<ItemData.ArmorData> scoreOf) {
         Map<Integer, List<TieredItem<ItemData.ArmorData>>> tierMap = new HashMap<>();
 
         for (ItemData.ArmorData armor : armors) {
+            double score = scoreOf.applyAsDouble(armor);
+
             // Check for manual override first
             int tier = overrideManager.getArmorOverride(armor.id())
-                .orElseGet(() -> {
-                    double score = armor.getScore();
-                    return (int) Math.round(score);
-                });
+                .orElseGet(() -> (int) Math.round(score));
+
+            // Magic section tiers live in their own range, below all regular tiers
+            if (inMagicSection.test(armor)) {
+                tier += MAGIC_TIER_OFFSET;
+            }
 
             // Calculate which row within the tier
-            int row = calculateRowInTier(armor.getScore(), tier);
+            int row = calculateRowInTier(score, tier);
 
             tierMap.computeIfAbsent(tier, k -> new ArrayList<>())
                 .add(new TieredItem<>(armor, tier, row));
@@ -78,7 +91,7 @@ public class TierCalculator {
         // Sort each tier's items by row (and then by score within the row)
         for (List<TieredItem<ItemData.ArmorData>> items : tierMap.values()) {
             items.sort(Comparator.comparingInt(TieredItem<ItemData.ArmorData>::row)
-                .thenComparing(item -> -item.data().getScore())); // Descending score within row
+                .thenComparing(item -> -scoreOf.applyAsDouble(item.data()))); // Descending score within row
         }
 
         Tierlists.LOGGER.info("Assigned {} armor pieces to {} tiers", armors.size(), tierMap.size());

@@ -52,6 +52,16 @@ public class AutoTierlistConfig {
     public static final ForgeConfigSpec.BooleanValue USE_ATTRIBUTE_DETECTION;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_EMI_CATEGORIES;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_RECIPE_PATTERNS;
+
+    // Magic armor
+    public static final ForgeConfigSpec.BooleanValue SEPARATE_MAGIC_ARMOR;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SPELL_POWER_ATTRIBUTE_PATTERNS;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> FLAT_SPELL_POWER_ATTRIBUTE_PATTERNS;
+    public static final ForgeConfigSpec.DoubleValue FLAT_SPELL_POWER_SCALE;
+    public static final ForgeConfigSpec.ConfigValue<List<? extends String>> MANA_ATTRIBUTE_PATTERNS;
+    public static final ForgeConfigSpec.DoubleValue MAGIC_SPELL_POWER_WEIGHT;
+    public static final ForgeConfigSpec.DoubleValue MAGIC_MANA_WEIGHT;
+    public static final ForgeConfigSpec.DoubleValue MAGIC_ARMOR_WEIGHT;
     public static final ForgeConfigSpec.ConfigValue<List<? extends String>> SKIPPED_ITEMS;
     public static final ForgeConfigSpec.ConfigValue<List<? extends List<String>>> ARMAGEDDON_TAGS;
     public static final ForgeConfigSpec.ConfigValue<String> CHAPTER_GROUP;
@@ -192,6 +202,61 @@ public class AutoTierlistConfig {
             .defineListAllowEmpty(List.of("skippedRecipePatterns"),
                                  () -> List.of("trim"),
                                  obj -> obj instanceof String);
+
+        SEPARATE_MAGIC_ARMOR = BUILDER
+            .comment("Move magic armor out of the regular rows of the crafting armor tierlist",
+                     "into its own section below, tiered by spell power, mana and armor value",
+                     "Magic armor is any chestplate granting spell power or mana (see the patterns below)")
+            .define("separateMagicArmor", true);
+
+        SPELL_POWER_ATTRIBUTE_PATTERNS = BUILDER
+            .comment("Regex patterns matched against attribute IDs to find spell power attributes",
+                     "Matched as a substring search; anchor with ^ and $ for a full match",
+                     "The default covers Iron's Spells generic \"irons_spellbooks:spell_power\"",
+                     "and every school power such as \"irons_spellbooks:fire_spell_power\"",
+                     "An attribute whose path is exactly \"spell_power\" counts as plain spell power,",
+                     "anything else as a school; the magic tier uses plain spell power",
+                     "plus the best single school power")
+            .defineListAllowEmpty(List.of("spellPowerAttributePatterns"),
+                                 () -> List.of("spell_power$"),
+                                 obj -> obj instanceof String);
+
+        FLAT_SPELL_POWER_ATTRIBUTE_PATTERNS = BUILDER
+            .comment("Regex patterns matched against attribute IDs to find spell power given in flat points",
+                     "rather than as a percentage, e.g. the \"+5 Spell Power\" of Ars Nouveau based armor",
+                     "It counts as plain spell power after being multiplied by flatSpellPowerScale",
+                     "Matched as a substring search; anchor with ^ and $ for a full match")
+            .defineListAllowEmpty(List.of("flatSpellPowerAttributePatterns"),
+                                 () -> List.of("^ars_nouveau:ars_nouveau\\.perk\\.spell_damage$"),
+                                 obj -> obj instanceof String);
+
+        FLAT_SPELL_POWER_SCALE = BUILDER
+            .comment("How much percentage spell power one flat spell power point counts as",
+                     "Default 0.01 means +5 flat spell power is rated like +5% spell power")
+            .defineInRange("flatSpellPowerScale", 0.1, 0.0, 1000.0);
+
+        MANA_ATTRIBUTE_PATTERNS = BUILDER
+            .comment("Regex patterns matched against attribute IDs to find max mana attributes",
+                     "The default covers \"irons_spellbooks:max_mana\" and \"ars_nouveau:ars_nouveau.perk.max_mana\"",
+                     "Matched as a substring search; anchor with ^ and $ for a full match")
+            .defineListAllowEmpty(List.of("manaAttributePatterns"),
+                                 () -> List.of("max_mana$"),
+                                 obj -> obj instanceof String);
+
+        MAGIC_SPELL_POWER_WEIGHT = BUILDER
+            .comment("Magic armor tier points per 1.0 (100%) of spell power",
+                     "Default 20 means every 5% of spell power is one tier")
+            .defineInRange("magicSpellPowerWeight", 20.0, 0.0, 1000.0);
+
+        MAGIC_MANA_WEIGHT = BUILDER
+            .comment("Magic armor tier points per point of max mana",
+                     "Default 0.02 means every 50 mana is one tier; set to 0 to ignore mana")
+            .defineInRange("magicManaWeight", 0.02, 0.0, 1000.0);
+
+        MAGIC_ARMOR_WEIGHT = BUILDER
+            .comment("Magic armor tier points per point of regular armor score (armor + toughness * 0.6)",
+                     "Default 0.5 means every 2 points of armor score is one tier; set to 0 to ignore armor")
+            .defineInRange("magicArmorWeight", 0.5, 0.0, 1000.0);
 
         SKIPPED_ITEMS = BUILDER
             .comment("Items to completely skip during tierlist generation",
